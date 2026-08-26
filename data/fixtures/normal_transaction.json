@@ -1,0 +1,101 @@
+{
+  "description": "Synthetic complete lifecycle for a normal transaction (no dispute). NOT real payment-provider data.",
+  "transaction": {
+    "transaction_id": "txn_lifecycle_normal_001",
+    "merchant_id": "merchant_demo_001",
+    "amount": 149.99,
+    "currency": "USD",
+    "ip_address": "198.51.100.23",
+    "device_hash": "dev_a1b2c3d4e5f67890",
+    "card_last4": "9876"
+  },
+  "events": [
+    {
+      "event_id": "evt_checkout_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "CHECKOUT_STARTED",
+      "timestamp": "2026-07-15T10:00:00Z",
+      "source": "merchant_storefront",
+      "metadata": {
+        "cart_items": 3,
+        "session_id": "sess_abc123"
+      }
+    },
+    {
+      "event_id": "evt_auth_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "AUTHENTICATION_COMPLETED",
+      "timestamp": "2026-07-15T10:01:30Z",
+      "source": "three_ds_provider",
+      "metadata": {
+        "eci": "05",
+        "three_ds_status": "completed",
+        "authentication_value": "AAEBBQAAAAAAAAoXEUY="
+      }
+    },
+    {
+      "event_id": "evt_authz_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "PAYMENT_AUTHORIZED",
+      "timestamp": "2026-07-15T10:01:45Z",
+      "source": "payment_gateway",
+      "metadata": {
+        "authorization_code": "AUTH_882910",
+        "avs_result": "Y",
+        "cvv_result": "M"
+      }
+    },
+    {
+      "event_id": "evt_capture_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "PAYMENT_CAPTURED",
+      "timestamp": "2026-07-15T10:02:00Z",
+      "source": "payment_gateway",
+      "metadata": {
+        "capture_amount": 149.99,
+        "settlement_batch": "BATCH_20260715"
+      }
+    },
+    {
+      "event_id": "evt_order_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "ORDER_CONFIRMED",
+      "timestamp": "2026-07-15T10:05:00Z",
+      "source": "order_management",
+      "metadata": {
+        "order_id": "ord_77201",
+        "items_confirmed": 3
+      }
+    },
+    {
+      "event_id": "evt_fulfill_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "FULFILLMENT_STARTED",
+      "timestamp": "2026-07-16T08:00:00Z",
+      "source": "warehouse",
+      "metadata": {
+        "shipping_carrier": "BlueDart",
+        "tracking_number": "BD2026071600123"
+      }
+    },
+    {
+      "event_id": "evt_delivered_001",
+      "transaction_id": "txn_lifecycle_normal_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "DELIVERED",
+      "timestamp": "2026-07-19T14:30:00Z",
+      "source": "carrier_webhook",
+      "metadata": {
+        "signature_name": "Alex Demo",
+        "delivery_location": "Front door",
+        "photo_proof": true
+      }
+    }
+  ]
+}
