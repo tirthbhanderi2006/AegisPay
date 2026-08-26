@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aegispay-db
+    environment:
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis
+      POSTGRES_DB: aegispay
+    ports:
+      - "5432:5432"
+    volumes:
+      - aegispay_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis -d aegispay"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aegispay_pgdata:
