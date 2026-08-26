@@ -1,0 +1,23 @@
+{
+  "dispute_id": "dsp_mc_unknown_003",
+  "network": "MASTERCARD",
+  "reason_code": "99.99",
+  "reason_code_description": "New scheme pilot code - resolution pending network documentation",
+  "amount": 120.00,
+  "currency": "USD",
+  "disputed_transaction_id": "txn_20260528_3120",
+  "telemetry": {
+    "transaction_id": "txn_20260528_3120",
+    "timestamp": "2026-05-28T10:47:00Z",
+    "amount": 120.00,
+    "currency": "USD",
+    "ip_address": "203.0.113.90",
+    "device_hash": "dev_71b0ce44a291",
+    "card_last4": "5309",
+    "customer_email": "s.okafor@example.com",
+    "customer_name": "Sade Okafor",
+    "order_id": "ord_55093",
+    "fulfillment_type": "digital"
+  },
+  "historical_transactions": []
+}

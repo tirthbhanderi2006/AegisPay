@@ -1,0 +1,50 @@
+{
+  "dispute_id": "dsp_visa_weak_002",
+  "network": "VISA",
+  "reason_code": "10.4",
+  "reason_code_description": "Fraud, Card-Absent Environment",
+  "amount": 79.99,
+  "currency": "USD",
+  "disputed_transaction_id": "txn_20260601_9917",
+  "telemetry": {
+    "transaction_id": "txn_20260601_9917",
+    "timestamp": "2026-06-01T08:12:00Z",
+    "amount": 79.99,
+    "currency": "USD",
+    "ip_address": "192.0.2.88",
+    "device_hash": "dev_44c2be01a7f3",
+    "card_last4": "1881",
+    "customer_email": "r.bancroft@example.com",
+    "customer_name": "Riley Bancroft",
+    "order_id": "ord_55340",
+    "fulfillment_type": "physical",
+    "three_ds_eci": "06",
+    "three_ds_status": "attempted",
+    "shipping_carrier": "FedEx",
+    "tracking_number": "FX9921183740",
+    "delivered_at": "2026-06-06T16:45:00Z",
+    "signature_name": null
+  },
+  "historical_transactions": [
+    {
+      "transaction_id": "txn_20260310_4410",
+      "timestamp": "2026-03-10T13:05:00Z",
+      "amount": 54.20,
+      "currency": "USD",
+      "ip_address": "198.51.100.7",
+      "device_hash": "dev_aa1190cd32b7",
+      "card_last4": "1881",
+      "order_id": "ord_52017"
+    },
+    {
+      "transaction_id": "txn_20260415_5128",
+      "timestamp": "2026-04-15T21:33:00Z",
+      "amount": 61.75,
+      "currency": "USD",
+      "ip_address": "198.51.100.19",
+      "device_hash": "dev_c77e5510bb92",
+      "card_last4": "1881",
+      "order_id": "ord_53166"
+    }
+  ]
+}

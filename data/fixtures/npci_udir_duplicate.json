@@ -1,0 +1,44 @@
+{
+  "dispute_id": "dsp_npci_dup_004",
+  "network": "NPCI",
+  "reason_code": "FRM-DUP",
+  "reason_code_description": "Duplicate processing of the same transaction (RuPay/UPI dispute)",
+  "amount": 310.00,
+  "currency": "USD",
+  "disputed_transaction_id": "txn_20260530_7781",
+  "telemetry": {
+    "transaction_id": "txn_20260530_7781",
+    "timestamp": "2026-05-30T09:02:00Z",
+    "amount": 310.00,
+    "currency": "USD",
+    "ip_address": "198.51.100.240",
+    "device_hash": "dev_e3091cc7f5aa",
+    "card_last4": "6042",
+    "customer_email": "v.iyer@example.com",
+    "customer_name": "Vikram Iyer",
+    "order_id": "ord_55184",
+    "fulfillment_type": "digital"
+  },
+  "historical_transactions": [
+    {
+      "transaction_id": "txn_20260214_2091",
+      "timestamp": "2026-02-14T17:26:00Z",
+      "amount": 310.00,
+      "currency": "USD",
+      "ip_address": "198.51.100.201",
+      "device_hash": "dev_b8421da0ee31",
+      "card_last4": "6042",
+      "order_id": "ord_53902"
+    },
+    {
+      "transaction_id": "txn_20251218_1544",
+      "timestamp": "2025-12-18T12:11:00Z",
+      "amount": 189.99,
+      "currency": "USD",
+      "ip_address": "198.51.100.240",
+      "device_hash": "dev_e3091cc7f5aa",
+      "card_last4": "6042",
+      "order_id": "ord_48770"
+    }
+  ]
+}

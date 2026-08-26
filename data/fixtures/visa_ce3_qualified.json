@@ -1,0 +1,50 @@
+{
+  "dispute_id": "dsp_visa_ce3_strong_001",
+  "network": "VISA",
+  "reason_code": "10.4",
+  "reason_code_description": "Fraud, Card-Absent Environment",
+  "amount": 495.00,
+  "currency": "USD",
+  "disputed_transaction_id": "txn_20260601_8842",
+  "telemetry": {
+    "transaction_id": "txn_20260601_8842",
+    "timestamp": "2026-06-01T14:32:00Z",
+    "amount": 495.00,
+    "currency": "USD",
+    "ip_address": "203.0.113.42",
+    "device_hash": "dev_9f3ab77c41e2d804",
+    "card_last4": "4242",
+    "customer_email": "jordan.mehta@example.com",
+    "customer_name": "Jordan Mehta",
+    "order_id": "ord_55219",
+    "fulfillment_type": "physical",
+    "three_ds_eci": "05",
+    "three_ds_status": "completed",
+    "shipping_carrier": "BlueDart",
+    "tracking_number": "BD7719300421",
+    "delivered_at": "2026-06-05T11:20:00Z",
+    "signature_name": "Jordan Mehta"
+  },
+  "historical_transactions": [
+    {
+      "transaction_id": "txn_20250910_1103",
+      "timestamp": "2025-09-10T09:15:00Z",
+      "amount": 320.00,
+      "currency": "USD",
+      "ip_address": "203.0.113.42",
+      "device_hash": "dev_9f3ab77c41e2d804",
+      "card_last4": "4242",
+      "order_id": "ord_40871"
+    },
+    {
+      "transaction_id": "txn_20251120_2277",
+      "timestamp": "2025-11-20T18:40:00Z",
+      "amount": 275.50,
+      "currency": "USD",
+      "ip_address": "203.0.113.42",
+      "device_hash": "dev_9f3ab77c41e2d804",
+      "card_last4": "4242",
+      "order_id": "ord_44102"
+    }
+  ]
+}
