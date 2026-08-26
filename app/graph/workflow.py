@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Dict
 
 from langgraph.graph import END, START, StateGraph
@@ -17,6 +18,8 @@ from app.engine.expected_value import (
 from app.engine.reason_codes import lookup
 from app.graph.state import AegisState
 from app.models.dispute import ClaimType, DisputeEvent
+
+logger = logging.getLogger(__name__)
 
 FINAL_FOUGHT = "DISPUTE_CONTESTED_DOSSIER_FINALIZED"
 FINAL_SETTLED = "AUTO_SETTLED_MERCHANT_NOTIFIED"
@@ -60,7 +63,40 @@ def build_initial_state(event: DisputeEvent) -> AegisState:
         notice=None,
         final_status="PENDING",
         errors=[],
+        # Phase 1 — lifecycle enrichment (populated by enrich_from_lifecycle node)
+        transaction_timeline=None,
+        evidence_records=None,
+        evidence_missing=None,
+        evidence_conflicts=None,
+        evidence_completeness=None,
     )
+
+
+def enrich_from_lifecycle_node(state: AegisState) -> Dict[str, Any]:
+    """If the disputed transaction has stored lifecycle data, enrich the state.
+
+    If the transaction is not in the lifecycle store, returns an empty dict
+    and the pipeline continues with existing behavior exactly.
+    """
+    event = state["event"]
+    txn_id = event.disputed_transaction_id
+    try:
+        from app.engine.reconstruction import reconstruct_transaction
+        reconstruction = reconstruct_transaction(txn_id)
+    except Exception as exc:
+        logger.warning("Lifecycle enrichment failed for %s: %s", txn_id, exc)
+        return {}
+
+    if reconstruction is None:
+        return {}
+
+    return {
+        "transaction_timeline": [entry.model_dump() for entry in reconstruction.timeline],
+        "evidence_records": [],  # populated from evidence_records table if needed
+        "evidence_missing": reconstruction.evidence_missing,
+        "evidence_conflicts": reconstruction.contradictory_events,
+        "evidence_completeness": reconstruction.completeness_score,
+    }
 
 
 def parse_dispute_node(state: AegisState) -> Dict[str, Any]:
@@ -181,7 +217,7 @@ def _rule_result_from_state(state: AegisState):
 
 def serialize_result(state: Dict[str, Any], persisted: bool = False) -> Dict[str, Any]:
     dossier = state.get("dossier")
-    return {
+    result = {
         "dispute_id": state.get("dispute_id"),
         "network": state.get("network"),
         "reason_code": state.get("reason_code"),
@@ -201,6 +237,15 @@ def serialize_result(state: Dict[str, Any], persisted: bool = False) -> Dict[str
         "notice": state.get("notice"),
         "persisted": persisted,
     }
+    # Phase 1 — include lifecycle evidence data when present
+    if state.get("transaction_timeline") is not None:
+        result["lifecycle"] = {
+            "transaction_timeline": state.get("transaction_timeline", []),
+            "evidence_missing": state.get("evidence_missing", []),
+            "evidence_conflicts": state.get("evidence_conflicts", []),
+            "evidence_completeness": state.get("evidence_completeness"),
+        }
+    return result
 
 
 def build_workflow():
@@ -215,7 +260,10 @@ def build_workflow():
     graph.add_node("finalize_settled", finalize_settled_node)
     graph.add_node("finalize_escalated", finalize_escalated_node)
 
-    graph.add_edge(START, "parse_dispute")
+    graph.add_node("enrich_from_lifecycle", enrich_from_lifecycle_node)
+
+    graph.add_edge(START, "enrich_from_lifecycle")
+    graph.add_edge("enrich_from_lifecycle", "parse_dispute")
     graph.add_edge("parse_dispute", "evaluate_rules")
     graph.add_edge("evaluate_rules", "route_decision")
     graph.add_conditional_edges(

@@ -1,0 +1,109 @@
+{
+  "description": "Synthetic disputed transaction lifecycle — same happy path plus a later dispute event. NOT real payment-provider data.",
+  "transaction": {
+    "transaction_id": "txn_lifecycle_disputed_001",
+    "merchant_id": "merchant_demo_001",
+    "amount": 299.00,
+    "currency": "USD",
+    "ip_address": "203.0.113.55",
+    "device_hash": "dev_f9e8d7c6b5a43210",
+    "card_last4": "1234"
+  },
+  "events": [
+    {
+      "event_id": "evt_checkout_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "CHECKOUT_STARTED",
+      "timestamp": "2026-06-01T09:00:00Z",
+      "source": "merchant_storefront",
+      "metadata": {
+        "cart_items": 1,
+        "session_id": "sess_xyz789"
+      }
+    },
+    {
+      "event_id": "evt_auth_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "AUTHENTICATION_COMPLETED",
+      "timestamp": "2026-06-01T09:01:00Z",
+      "source": "three_ds_provider",
+      "metadata": {
+        "eci": "05",
+        "three_ds_status": "completed"
+      }
+    },
+    {
+      "event_id": "evt_authz_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "PAYMENT_AUTHORIZED",
+      "timestamp": "2026-06-01T09:01:15Z",
+      "source": "payment_gateway",
+      "metadata": {
+        "authorization_code": "AUTH_990102"
+      }
+    },
+    {
+      "event_id": "evt_capture_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "PAYMENT_CAPTURED",
+      "timestamp": "2026-06-01T09:01:30Z",
+      "source": "payment_gateway",
+      "metadata": {
+        "capture_amount": 299.00
+      }
+    },
+    {
+      "event_id": "evt_order_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "ORDER_CONFIRMED",
+      "timestamp": "2026-06-01T09:10:00Z",
+      "source": "order_management",
+      "metadata": {
+        "order_id": "ord_88010"
+      }
+    },
+    {
+      "event_id": "evt_fulfill_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "FULFILLMENT_STARTED",
+      "timestamp": "2026-06-02T07:00:00Z",
+      "source": "warehouse",
+      "metadata": {
+        "shipping_carrier": "FedEx",
+        "tracking_number": "FX20260602001"
+      }
+    },
+    {
+      "event_id": "evt_delivered_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "DELIVERED",
+      "timestamp": "2026-06-05T16:00:00Z",
+      "source": "carrier_webhook",
+      "metadata": {
+        "signature_name": "Sam Disputed",
+        "delivery_location": "Reception desk"
+      }
+    },
+    {
+      "event_id": "evt_dispute_d001",
+      "transaction_id": "txn_lifecycle_disputed_001",
+      "merchant_id": "merchant_demo_001",
+      "event_type": "DISPUTE_OPENED",
+      "timestamp": "2026-07-20T12:00:00Z",
+      "source": "payment_network",
+      "metadata": {
+        "dispute_id": "dsp_lifecycle_001",
+        "network": "VISA",
+        "reason_code": "10.4",
+        "dispute_amount": 299.00
+      }
+    }
+  ]
+}

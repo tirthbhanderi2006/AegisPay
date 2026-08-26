@@ -77,7 +77,54 @@ Unit tests are hermetic (no network, no DB). Integration tests mock the agent LL
 pytest -v
 ```
 
+## Phase 1: Transaction Lifecycle Evidence
+
+AegisPay now maintains a **persistent merchant-side transaction/event lifecycle** for cross-lifecycle
+payment intelligence. When a dispute arrives, the system checks for stored lifecycle data and enriches
+the dispute processing pipeline with reconstructed evidence.
+
+### Lifecycle Events
+
+Events follow the canonical payment lifecycle:
+
+```
+CHECKOUT_STARTED → AUTHENTICATION_COMPLETED → PAYMENT_AUTHORIZED → PAYMENT_CAPTURED
+→ ORDER_CONFIRMED → FULFILLMENT_STARTED → DELIVERED
+```
+
+Each event carries an integrity hash (SHA-256) and is free of raw PAN/sensitive PII.
+
+### New Endpoints
+
+- `POST /webhooks/payment-event` — ingest merchant lifecycle events (idempotent on `event_id`)
+- `GET /transactions/{id}/timeline` — retrieve a reconstructed transaction timeline with
+  completeness score, missing evidence, contradictions, and duplicates
+
+### Transaction Reconstruction
+
+Pure deterministic service (no LLM): given a `transaction_id`, returns:
+- Ordered timeline of events
+- Evidence present / missing
+- Contradictory events (e.g., `DELIVERED` before `FULFILLMENT_STARTED`)
+- Duplicate events
+- Lifecycle completeness score (0.0–1.0)
+
+### Dispute Integration
+
+When a dispute arrives via `POST /webhooks/dispute`:
+- If the disputed `transaction_id` exists in the lifecycle store, the timeline is reconstructed
+  and injected into `AegisState` (fields: `transaction_timeline`, `evidence_missing`,
+  `evidence_conflicts`, `evidence_completeness`)
+- If no lifecycle data exists, the pipeline operates exactly as before
+
+### Lifecycle Fixtures (`data/fixtures/`)
+
+| File | Scenario |
+|---|---|
+| `normal_transaction.json` | Complete lifecycle: checkout → auth → payment → order → fulfillment (no dispute) |
+| `disputed_transaction.json` | Same lifecycle + `DISPUTE_OPENED` event |
+
 ## Upgrade paths
 
 Auth on webhook · async webhook mode with job queue · Alembic migrations · per-node model diversity ·
-win-probability calibration from historical outcomes.
+win-probability calibration from historical outcomes · ML fraud firewall · graph analytics.

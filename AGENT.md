@@ -95,16 +95,19 @@ docker-compose.yml        postgres:16-alpine service "db" (aegis/aegis/aegispay 
 app/
 ├── config.py             Settings dataclass (env-driven)
 ├── db.py                 psycopg3 repository (init_schema, save/get/list disputes)
+├── lifecycle_repo.py     [Phase 1] psycopg3 lifecycle repository (transactions, payment_events, evidence_records)
 ├── main.py               FastAPI app factory + /health
 ├── cli.py                python -m app.cli --fixture data/fixtures/x.json [--no-db]
 ├── models/
 │   ├── dispute.py        Network, ClaimType, TransactionTelemetry, DisputeEvent
 │   ├── engine.py         EvidenceFlags, QualifyingTransaction, RuleEngineResult
-│   └── outputs.py        DossierDraft, AuditVerdict, MerchantNotice, ClaimClassification, EvidencePoint
+│   ├── outputs.py        DossierDraft, AuditVerdict, MerchantNotice, ClaimClassification, EvidencePoint
+│   └── lifecycle.py      [Phase 1] EventType, PaymentTransaction, PaymentEvent, EvidenceRecord, TransactionReconstruction
 ├── engine/
 │   ├── reason_codes.py   static Visa/Mastercard/NPCI lookup (NPCI illustrative)
 │   ├── ce3_rules.py      deterministic CE3.0 + evidence-flag evaluation
-│   └── expected_value.py win-prob heuristics + EV routing math
+│   ├── expected_value.py win-prob heuristics + EV routing math
+│   └── reconstruction.py [Phase 1] deterministic transaction reconstruction service (no LLM)
 ├── agents/
 │   ├── llm.py            ChatGroq singleton, JSON extraction, repair retry, Pydantic validation
 │   ├── drafter.py        DefenseDrafterNode  (prompt verbatim from MASTER_PROMPT.md §1)
@@ -112,15 +115,17 @@ app/
 │   ├── settlement.py     AutoSettlementNode (§3)
 │   └── classifier.py     reason-code fallback classifier (§4)
 ├── graph/
-│   ├── state.py          AegisState TypedDict
-│   └── workflow.py       StateGraph wiring, conditional edges, serialize_result()
-├── api/routes.py         POST /webhooks/dispute (sync), GET /disputes[/{id}]
+│   ├── state.py          AegisState TypedDict (+ Phase 1 lifecycle fields)
+│   └── workflow.py       StateGraph wiring, enrich_from_lifecycle node, conditional edges, serialize_result()
+├── api/
+│   ├── routes.py         POST /webhooks/dispute (sync), GET /disputes[/{id}]
+│   └── lifecycle_routes.py [Phase 1] POST /webhooks/payment-event, GET /transactions/{id}/timeline
 └── utils/
     ├── masking.py        PII masking pre-LLM
     └── timeutil.py       tolerant ISO-8601 parsing (Z-suffix safe)
 
-data/fixtures/            4 mock webhooks (see §8)
-tests/                    unit tests (no LLM/db) + mocked-graph integration tests
+data/fixtures/            4 dispute webhooks + 2 lifecycle fixtures (see §8)
+tests/                    unit tests (no LLM/db) + mocked-graph integration + lifecycle tests
 ```
 
 ## 6. Work Log / Status
@@ -140,6 +145,7 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration test
 | 11 | pytest: **32/32 passed**; fixes during test phase → see ADR-008/009 | DONE |
 | 12 | Live Groq smoke tests — all 4 fixtures verified end-to-end + persisted to Postgres | DONE |
 | 13 | **Next.js 14 command dashboard** (`dashboard/`) — 3-panel UI, mock fallback, build green, live-verified vs backend | DONE |
+| 14 | **Phase 1 — Transaction/Evidence Lifecycle Foundation:** domain models (lifecycle.py), normalized DB tables (lifecycle_repo.py), reconstruction service (reconstruction.py), event ingestion API (lifecycle_routes.py), AegisState enrichment (enrich_from_lifecycle node), fixtures ×2, test suite 16 new tests | DONE |
 
 ### Live-run verification results (2026-08-25)
 | Fixture | decision | final_status | iterations | notes |
@@ -176,6 +182,7 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration test
   (e) primary_gap now reports "None — CE3.0 qualifying evidence chain satisfied." when qualified instead of the default gap text.
 - **ADR-011 — LLM fault containment (found via user's live dashboard session):** Groq intermittently returns HTTP 400 `json_validate_failed` with the model's near-valid JSON embedded in `error.failed_generation` (observed: one stray `}` / missing `]`). Fixes: (1) `balance_json_text()` deterministically repairs mismatched/missing closers + unclosed strings; `extract_json_object()` now tries direct → substring → balanced candidates; (2) `_call()` catches ALL non-rate-limit LLM errors, salvages `failed_generation` (via SDK `.body`, regex fallback) and parses it; (3) route-level guard in `/webhooks/dispute` converts any pipeline exception into a safe ESCALATED human-review result — **HTTP 500s are now impossible**. Verified in production: a TPM-exhausted run degraded to the honest "Insufficient" draft → auditor rejected 2× → circuit-breaker escalation (no crash); immediate retry passed iter-1 @ 0.96. Regression coverage: `tests/test_llm_json.py` (10 tests; suite total 42).
 - **ADR-010 — Dashboard stack & decisions:** Next.js 14.2.35 (14.2.32 flagged by security advisory) + React 18 + Tailwind 3 + lucide-react only (hand-rolled primitives, no Radix dep). System font stacks instead of Google Fonts (no build-time network fetch). Amounts cache seeded from fixtures because `GET /disputes` list rows omit `amount` — metrics sum known amounts. Ops-decision buttons on escalation card are client-side demo state (backend has no such endpoint yet — listed as upgrade path).
+- **ADR-012 — Phase 1 lifecycle persistence layer.** Three normalized tables (`transactions`, `payment_events`, `evidence_records`) added alongside existing `disputes` table; no JSONB blobs for lifecycle data. `LifecycleRepository` follows same thread-safe pattern as `DisputeRepository`. `enrich_from_lifecycle` node is inserted as the first node in the LangGraph workflow (`START → enrich → parse_dispute → ...`); returns empty dict when no lifecycle data exists, preserving all existing behavior. Reconstruction service is pure deterministic (no LLM). Event ingestion endpoint enforces `event_id` idempotency via primary key constraint. All 42 original tests still pass; 16 new lifecycle tests added (58 total).
 
 ## 8. Fixture Scenarios (`data/fixtures/`)
 
@@ -185,6 +192,8 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration test
 | `visa_weak_no_match.json` | VISA 10.4, $79.99, hist txs <120d, NO identifier match, 3DS attempted-only, no signature | SETTLE → merchant notice (p=0.32) |
 | `mastercard_unknown_code.json` | MASTERCARD 99.99 (not in table) | LLM fallback classifier → UNKNOWN → ESCALATE |
 | `npci_udir_duplicate.json` | NPCI FRM-DUP, $310.00 | static hit → DUPLICATE_CHARGE → FIGHT (observed: pass on iter 1 @ 0.93 — dossier argues non-duplication) |
+| `normal_transaction.json` | Lifecycle fixture: complete checkout→auth→payment→order→fulfillment (no dispute) | Used for lifecycle ingestion + reconstruction tests |
+| `disputed_transaction.json` | Same lifecycle + DISPUTE_OPENED event | Used for disputed lifecycle reconstruction tests |
 
 ## 9. Known Gaps / Upgrade Paths
 
@@ -193,6 +202,8 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration test
 - Alembic migrations once schema evolves beyond v1.
 - Model diversity per node (auditor on stronger model).
 - Win-probability calibration from historical outcomes.
+- Phase 2: ML fraud firewall leveraging lifecycle evidence.
+- Phase 3: Graph analytics across transaction/merchant networks.
 
 ---
 
