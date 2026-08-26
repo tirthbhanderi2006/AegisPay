@@ -30,3 +30,9 @@ class AegisState(TypedDict, total=False):
     notice: Optional[Dict[str, Any]]
     final_status: str
     errors: List[str]
+    # Phase 1 — lifecycle evidence enrichment
+    transaction_timeline: Optional[List[Dict[str, Any]]]
+    evidence_records: Optional[List[Dict[str, Any]]]
+    evidence_missing: Optional[List[str]]
+    evidence_conflicts: Optional[List[str]]
+    evidence_completeness: Optional[float]

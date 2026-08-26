@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
+from app.api.lifecycle_routes import lifecycle_router
 from app.config import settings
 from app.db import repository
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="AegisPay", version="0.1.0")
+    app = FastAPI(title="AegisPay", version="0.2.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
+    app.include_router(lifecycle_router)
 
     @app.on_event("startup")
     def _startup():

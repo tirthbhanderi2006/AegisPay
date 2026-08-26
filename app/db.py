@@ -59,6 +59,12 @@ class DisputeRepository:
             with self._lock, self._connect() as conn:
                 conn.execute(_SCHEMA)
                 conn.commit()
+            # Phase 1 — also initialize lifecycle tables
+            try:
+                from app.lifecycle_repo import lifecycle_repository
+                lifecycle_repository.init_lifecycle_schema()
+            except Exception as exc:
+                logger.warning("Lifecycle schema init skipped: %s", exc)
             return True
         except psycopg.OperationalError as exc:
             logger.error("Database unavailable during schema init: %s", exc)
