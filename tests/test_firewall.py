@@ -218,9 +218,10 @@ class TestScoring:
             rapid_retry_ratio=0.8,
             unique_instrument_count=5,
         )
-        s1, _ = compute_risk_score(f)
-        s2, _ = compute_risk_score(f)
+        s1, _, c1 = compute_risk_score(f)
+        s2, _, c2 = compute_risk_score(f)
         assert s1 == s2, "Scoring must be deterministic"
+        assert c1 == c2, "Feature contributions must be deterministic"
 
     def test_score_clamped_zero_one(self):
         # Very suspicious
@@ -233,12 +234,12 @@ class TestScoring:
             device_change_count=10,
             ip_change_count=10,
         )
-        score_bad, _ = compute_risk_score(f_bad)
+        score_bad, _, _ = compute_risk_score(f_bad)
         assert 0.0 <= score_bad <= 1.0
 
         # Very normal
         f_good = BehavioralFeatures()
-        score_good, _ = compute_risk_score(f_good)
+        score_good, _, _ = compute_risk_score(f_good)
         assert 0.0 <= score_good <= 1.0
 
     def test_suspicious_features_score_higher(self):
@@ -249,9 +250,10 @@ class TestScoring:
             retry_count=5,
             unique_instrument_count=5,
         )
-        s_normal, _ = compute_risk_score(f_normal)
-        s_suspicious, _ = compute_risk_score(f_suspicious)
+        s_normal, _, _ = compute_risk_score(f_normal)
+        s_suspicious, _, _ = compute_risk_score(f_suspicious)
         assert s_suspicious > s_normal
+
 
 
 # ===========================================================================
@@ -504,3 +506,115 @@ class TestAPIModels:
             extra_field="ok",
         )
         assert ev.event_id == "e1"
+
+
+# ===========================================================================
+# PHASE 2.1 — LONGITUDINAL DETECTION & FEATURE CONTRIBUTIONS
+# ===========================================================================
+
+class TestTrueLongitudinalScenarios:
+    def test_longitudinal_device_cycling_detected_by_lifecycle_only(self):
+        """Current session looks normal, but device history reveals 5 accounts with failures."""
+        from app.synthetic.generator import gen_longitudinal_device_cycling
+        import random
+        events, label, exp_action, history = gen_longitudinal_device_cycling(random.Random(42), 0)
+
+        # Session-only: sees 1 normal attempt -> low risk, ALLOW
+        sess_assessment = evaluate_session_from_dicts(events, session_id="test_ldc_sess")
+        assert sess_assessment.risk_score < 0.30
+        assert sess_assessment.action == RecommendedAction.ALLOW
+
+        # Lifecycle-aware: detects multi-account device farm -> high risk, BLOCK/CHALLENGE
+        life_assessment = evaluate_session_from_dicts(events, session_id="test_ldc_life", historical_events=history)
+        assert life_assessment.risk_score > sess_assessment.risk_score
+        assert life_assessment.risk_score >= 0.50
+        assert life_assessment.action in (RecommendedAction.BLOCK, RecommendedAction.CHALLENGE)
+
+    def test_longitudinal_low_and_slow_detected(self):
+        """Current session has 1 attempt, but history reveals 12 probing sessions with failures."""
+        from app.synthetic.generator import gen_longitudinal_low_and_slow
+        import random
+        events, label, exp_action, history = gen_longitudinal_low_and_slow(random.Random(42), 0)
+
+        sess_assessment = evaluate_session_from_dicts(events, session_id="test_lls_sess")
+        life_assessment = evaluate_session_from_dicts(events, session_id="test_lls_life", historical_events=history)
+
+        assert life_assessment.risk_score > sess_assessment.risk_score
+        assert life_assessment.risk_score >= 0.35
+        assert life_assessment.action in (RecommendedAction.CHALLENGE, RecommendedAction.BLOCK)
+        assert life_assessment.intent == IntentClass.CARD_TESTING
+
+    def test_longitudinal_device_rotation_detected(self):
+        """Account rotates through 5 devices in 48 hours."""
+        from app.synthetic.generator import gen_longitudinal_device_rotation
+        import random
+        events, label, exp_action, history = gen_longitudinal_device_rotation(random.Random(42), 0)
+
+        sess_assessment = evaluate_session_from_dicts(events, session_id="test_ldr_sess")
+        life_assessment = evaluate_session_from_dicts(events, session_id="test_ldr_life", historical_events=history)
+
+        assert life_assessment.risk_score > sess_assessment.risk_score
+        assert life_assessment.intent == IntentClass.ACCOUNT_TAKEOVER_LIKE
+
+    def test_longitudinal_failure_pattern_detected(self):
+        """Current session is 1 attempt, but account has 90% failure history."""
+        from app.synthetic.generator import gen_longitudinal_failure_pattern
+        import random
+        events, label, exp_action, history = gen_longitudinal_failure_pattern(random.Random(42), 0)
+
+        sess_assessment = evaluate_session_from_dicts(events, session_id="test_lfp_sess")
+        life_assessment = evaluate_session_from_dicts(events, session_id="test_lfp_life", historical_events=history)
+
+        assert life_assessment.risk_score > sess_assessment.risk_score
+        assert life_assessment.risk_score >= 0.35
+        assert life_assessment.action in (RecommendedAction.CHALLENGE, RecommendedAction.BLOCK)
+        assert life_assessment.intent == IntentClass.CARD_TESTING
+
+
+
+class TestFeatureContributionsAndEvidenceQuality:
+    def test_feature_contributions_exposed_deterministically(self):
+        events = _make_events([
+            {"type": "PAYMENT_ATTEMPTED", "offset_s": 0},
+            {"type": "PAYMENT_FAILED", "offset_s": 5},
+            {"type": "PAYMENT_RETRIED", "offset_s": 10},
+            {"type": "PAYMENT_FAILED", "offset_s": 15},
+        ])
+        assessment = evaluate_session_from_dicts(events, session_id="contrib_test")
+        assert "velocity" in assessment.feature_contributions
+        assert "retry" in assessment.feature_contributions
+        assert len(assessment.signals) > 0
+        for s in assessment.signals:
+            assert hasattr(s, "contribution")
+            assert s.contribution >= 0.0
+
+    def test_evidence_quality_reflects_telemetry_depth(self):
+        # Sparse session without identifiers or history
+        sparse_events = [{"event_id": "e1", "event_type": "PAYMENT_ATTEMPTED", "timestamp": "2026-07-20T10:00:00Z"}]
+        sparse_assessment = evaluate_session_from_dicts(sparse_events, session_id="sparse")
+        assert sparse_assessment.evidence_quality < 0.50
+
+        # Rich session with device, ip, account, and historical context
+        history = [{"event_type": "PAYMENT_SUCCEEDED", "timestamp": "2026-06-01T10:00:00Z", "transaction_id": "tx1"}]
+        rich_events = [
+            {"event_id": "e1", "event_type": "CHECKOUT_VIEWED", "timestamp": "2026-07-20T10:00:00Z", "device_hash": "d1", "ip_address": "1.1.1.1", "account_id": "a1"},
+            {"event_id": "e2", "event_type": "PAYMENT_ATTEMPTED", "timestamp": "2026-07-20T10:01:00Z", "device_hash": "d1", "ip_address": "1.1.1.1", "account_id": "a1"},
+        ]
+        rich_assessment = evaluate_session_from_dicts(rich_events, session_id="rich", historical_events=history, device_hash="d1", ip_address="1.1.1.1", account_id="a1")
+        assert rich_assessment.evidence_quality >= 0.80
+
+
+class TestAdversarialRobustness:
+    def test_timing_jitter_stability(self):
+        """Jittering timestamps by ±10% should not wildly shift intent or risk score."""
+        from app.synthetic.generator import gen_card_testing_a
+        import random
+        events1, _, _, _ = gen_card_testing_a(random.Random(42), 0)
+        events2, _, _, _ = gen_card_testing_a(random.Random(43), 0)
+
+        a1 = evaluate_session_from_dicts(events1, session_id="r1")
+        a2 = evaluate_session_from_dicts(events2, session_id="r2")
+
+        assert a1.intent == a2.intent == IntentClass.CARD_TESTING
+        assert abs(a1.risk_score - a2.risk_score) < 0.15
+

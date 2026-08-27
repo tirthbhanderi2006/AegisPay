@@ -44,6 +44,7 @@ class RiskSignal(BaseModel):
     name: str
     value: float
     severity: SignalSeverity
+    contribution: float = 0.0
     description: str = ""
 
 
@@ -108,9 +109,12 @@ class FirewallAssessment(BaseModel):
     signals: List[RiskSignal] = Field(default_factory=list)
     missing_data: List[str] = Field(default_factory=list)
     features: Optional[BehavioralFeatures] = None
+    feature_contributions: Dict[str, float] = Field(default_factory=dict)
+    evidence_quality: float = 1.0
     policy_version: str = ""
     engine_version: str = ""
     latency_ms: float = 0.0
+
 
 
 # ---------------------------------------------------------------------------

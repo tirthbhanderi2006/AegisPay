@@ -16,7 +16,7 @@ Same input -> same score.  No randomness.  No LLM.  No ML.
 """
 
 import math
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from app.models.firewall import BehavioralFeatures, RiskSignal, SignalSeverity
 
@@ -145,16 +145,27 @@ def variation_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]
 def infrastructure_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]:
     """Score based on device/IP/account relationships."""
     signals: List[RiskSignal] = []
-    # Many accounts on one device (3+ suspicious)
+    # Many accounts on one device (3+ suspicious, device farm/cycling)
     multi_acc = _sigmoid(f.accounts_on_device, midpoint=3, steepness=1.5)
-    # Device cycling
+    # Device cycling in session
     dev_change = _sigmoid(f.device_change_count, midpoint=2, steepness=1.5)
-    # IP cycling
+    # IP cycling in session
     ip_change = _sigmoid(f.ip_change_count, midpoint=2, steepness=1.5)
     # Many devices on one account
     multi_dev = _sigmoid(f.devices_on_account, midpoint=3, steepness=1.0)
 
-    score = multi_acc * 0.3 + dev_change * 0.25 + ip_change * 0.25 + multi_dev * 0.2
+    # Legitimate Shared IP attenuation:
+    # If accounts_on_ip >= 3 but payments succeed (0 failure) and devices are distinct per account,
+    # it is a corporate/office network or NAT -> zero IP risk.
+    # Otherwise, if accounts_on_ip >= 3 with failures/anomalies -> score multiple_accounts_on_ip.
+    multi_ip_score = 0.0
+    if f.accounts_on_ip >= 3:
+        if f.payment_failures_last_5m == 0 and f.failed_to_success_ratio == 0 and f.accounts_on_device <= 1:
+            multi_ip_score = 0.0
+        else:
+            multi_ip_score = _sigmoid(f.accounts_on_ip, midpoint=3, steepness=1.2)
+
+    score = max(multi_acc, dev_change, ip_change, multi_dev, multi_ip_score)
     score = min(score, 1.0)
 
     if multi_acc > 0.3:
@@ -178,11 +189,18 @@ def infrastructure_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSig
             severity=_severity(ip_change),
             description=f"{f.ip_change_count} IP address changes within session",
         ))
+    if multi_ip_score > 0.3:
+        signals.append(RiskSignal(
+            name="multiple_accounts_on_ip",
+            value=f.accounts_on_ip,
+            severity=_severity(multi_ip_score),
+            description=f"{f.accounts_on_ip} accounts seen on this IP with failure concentration",
+        ))
     return round(score, 4), signals
 
 
 def historical_deviation_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]:
-    """Score based on deviation from historical baseline."""
+    """Score based on deviation from historical baseline or longitudinal risk patterns."""
     signals: List[RiskSignal] = []
 
     if f.historical_txn_count == 0:
@@ -197,17 +215,24 @@ def historical_deviation_component(f: BehavioralFeatures) -> Tuple[float, List[R
         ratio = current_per_day / f.historical_payment_velocity if f.historical_payment_velocity > 0 else 0
         vel_deviation = _sigmoid(ratio, midpoint=5, steepness=0.5)
 
-    # Failure rate deviation
+    # Failure rate deviation (current vs historical)
     fail_deviation = 0.0
     if f.historical_failure_rate < 0.3 and f.failed_to_success_ratio > 2.0:
         fail_deviation = _sigmoid(f.failed_to_success_ratio, midpoint=3, steepness=1.0)
 
-    # Device count deviation
+    # High historical failure pattern (longitudinal card testing / bad actor)
+    hist_fail_score = 0.0
+    if f.historical_txn_count >= 3 and f.historical_failure_rate >= 0.50:
+        hist_fail_score = _sigmoid(f.historical_failure_rate, midpoint=0.5, steepness=6.0)
+
+    # Device count deviation / rotation across history
     dev_deviation = 0.0
     if f.historical_device_count > 0 and f.devices_on_account > f.historical_device_count * 2:
         dev_deviation = _sigmoid(f.devices_on_account / f.historical_device_count, midpoint=2, steepness=1.5)
+    elif f.devices_on_account >= 3:
+        dev_deviation = _sigmoid(f.devices_on_account, midpoint=3, steepness=1.5)
 
-    score = vel_deviation * 0.4 + fail_deviation * 0.3 + dev_deviation * 0.3
+    score = max(vel_deviation, fail_deviation, hist_fail_score, dev_deviation)
     score = min(score, 1.0)
 
     if vel_deviation > 0.3:
@@ -224,7 +249,22 @@ def historical_deviation_component(f: BehavioralFeatures) -> Tuple[float, List[R
             severity=_severity(fail_deviation),
             description=f"Current failure ratio {f.failed_to_success_ratio:.1f}x vs historical {f.historical_failure_rate:.2f}",
         ))
+    if hist_fail_score > 0.3:
+        signals.append(RiskSignal(
+            name="historical_failure_concentration",
+            value=round(f.historical_failure_rate, 2),
+            severity=_severity(hist_fail_score),
+            description=f"Historical failure rate {round(f.historical_failure_rate * 100)}% across {f.historical_txn_count} transactions",
+        ))
+    if dev_deviation > 0.3:
+        signals.append(RiskSignal(
+            name="historical_device_rotation",
+            value=f.devices_on_account,
+            severity=_severity(dev_deviation),
+            description=f"{f.devices_on_account} devices associated with account across history",
+        ))
     return round(score, 4), signals
+
 
 
 def sequence_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]:
@@ -271,15 +311,12 @@ def sequence_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]:
 # Top-level scorer
 # ---------------------------------------------------------------------------
 
-def compute_risk_score(features: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]:
+def compute_risk_score(features: BehavioralFeatures) -> Tuple[float, List[RiskSignal], Dict[str, float]]:
     """Compute overall risk score from behavioral features.
 
-    Returns (risk_score, signals) where risk_score is clamped to [0.0, 1.0].
-
-    Uses a combination boost: when 3+ components fire above 0.4, the raw
-    weighted sum is amplified.  Rationale: high velocity ALONE might be
-    legitimate, but high velocity + multiple instruments + high failure ratio
-    together is very suspicious.
+    Returns (risk_score, signals, feature_contributions) where risk_score is
+    clamped to [0.0, 1.0], and feature_contributions exposes the exact
+    mathematical risk contribution of each component.
     """
     v_score, v_signals = velocity_component(features)
     r_score, r_signals = retry_component(features)
@@ -301,15 +338,43 @@ def compute_risk_score(features: BehavioralFeatures) -> Tuple[float, List[RiskSi
     component_scores = [v_score, r_score, var_score, i_score, h_score, s_score]
     firing = sum(1 for c in component_scores if c > 0.4)
 
+    multiplier = 1.0
     if firing >= 4:
-        raw = raw * 2.5  # strong multi-signal amplification
+        multiplier = 2.5
     elif firing >= 3:
-        raw = raw * 2.0  # moderate amplification
+        multiplier = 2.0
     elif firing >= 2:
-        raw = raw * 1.5  # mild amplification
+        multiplier = 1.5
 
-    risk_score = max(0.0, min(1.0, raw))
+    boosted = raw * multiplier
+    risk_score = max(0.0, min(1.0, boosted))
+
+    # Feature contribution breakdown (exact mathematical contribution per component)
+    contributions = {
+        "velocity": round(min(1.0, W_VELOCITY * v_score * multiplier), 4),
+        "retry": round(min(1.0, W_RETRY * r_score * multiplier), 4),
+        "variation": round(min(1.0, W_VARIATION * var_score * multiplier), 4),
+        "infrastructure": round(min(1.0, W_INFRASTRUCTURE * i_score * multiplier), 4),
+        "historical_deviation": round(min(1.0, W_HISTORICAL * h_score * multiplier), 4),
+        "sequence": round(min(1.0, W_SEQUENCE * s_score * multiplier), 4),
+    }
+
+    # Assign individual contributions to signals
+    for s in v_signals:
+        s.contribution = round(contributions["velocity"] / max(len(v_signals), 1), 4)
+    for s in r_signals:
+        s.contribution = round(contributions["retry"] / max(len(r_signals), 1), 4)
+    for s in var_signals:
+        s.contribution = round(contributions["variation"] / max(len(var_signals), 1), 4)
+    for s in i_signals:
+        s.contribution = round(contributions["infrastructure"] / max(len(i_signals), 1), 4)
+    for s in h_signals:
+        s.contribution = round(contributions["historical_deviation"] / max(len(h_signals), 1), 4)
+    for s in s_signals:
+        s.contribution = round(contributions["sequence"] / max(len(s_signals), 1), 4)
+
     all_signals = v_signals + r_signals + var_signals + i_signals + h_signals + s_signals
 
-    return round(risk_score, 4), all_signals
+    return round(risk_score, 4), all_signals, contributions
+
 

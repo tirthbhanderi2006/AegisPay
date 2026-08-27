@@ -1,202 +1,379 @@
 {
   "session_only": {
     "mode": "session_only",
-    "sessions": 988,
+    "sessions": 990,
     "seed": 42,
     "overall": {
       "precision": 0.8889,
-      "recall": 0.8889,
-      "f1": 0.8889,
-      "detection_rate": 0.8889,
+      "recall": 0.5714,
+      "f1": 0.6957,
+      "detection_rate": 0.5714,
       "false_positive_rate": 0.25,
-      "true_positives": 608,
-      "false_positives": 76,
-      "true_negatives": 228,
-      "false_negatives": 76
+      "true_positives": 440,
+      "false_positives": 55,
+      "true_negatives": 165,
+      "false_negatives": 330
     },
     "per_scenario": {
       "ACCOUNT_TAKEOVER_LIKE": {
-        "count": 76,
-        "intent_accuracy": 0.9079,
-        "action_accuracy": 0.0,
-        "avg_risk_score": 0.3858
+        "count": 55,
+        "intent_accuracy": 0.9091,
+        "action_accuracy": 0.0909,
+        "avg_risk_score": 0.5075
       },
       "AUTOMATED_CHECKOUT": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 0.0,
         "action_accuracy": 0.0,
-        "avg_risk_score": 0.4601
+        "avg_risk_score": 0.4773
       },
       "CARD_TESTING": {
-        "count": 380,
+        "count": 275,
         "intent_accuracy": 1.0,
-        "action_accuracy": 0.4,
-        "avg_risk_score": 0.6957
+        "action_accuracy": 0.6,
+        "avg_risk_score": 0.7946
       },
       "DISTRIBUTED_SUSPICIOUS_BEHAVIOR": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.9594
+        "avg_risk_score": 1.0
       },
       "LEGITIMATE_RETRY_BEHAVIOR": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.0593
+        "avg_risk_score": 0.0708
       },
       "LEGITIMATE_SHARED_DEVICE": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.1209
+        "avg_risk_score": 0.2643
       },
       "LEGITIMATE_SHARED_IP": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 0.0,
         "action_accuracy": 0.0,
-        "avg_risk_score": 0.3563
+        "avg_risk_score": 0.4206
+      },
+      "LONGITUDINAL_DEVICE_CYCLING": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.1761
+      },
+      "LONGITUDINAL_DEVICE_ROTATION": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.1761
+      },
+      "LONGITUDINAL_FAILURE_PATTERN": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.1761
+      },
+      "LONGITUDINAL_IP_CYCLING": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.1761
+      },
+      "LONGITUDINAL_LOW_AND_SLOW": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.1761
       },
       "LOW_AND_SLOW_AUTOMATION": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 0.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.354
+        "avg_risk_score": 0.3713
       },
       "NORMAL": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.0441
+        "avg_risk_score": 0.0554
       }
     },
     "confusion_matrix": {
-      "AUTOMATED_CHECKOUT": {
-        "CARD_TESTING": 76
-      },
-      "ACCOUNT_TAKEOVER_LIKE": {
-        "ACCOUNT_TAKEOVER_LIKE": 69,
-        "CARD_TESTING": 7
-      },
       "NORMAL": {
-        "NORMAL": 228,
-        "ACCOUNT_TAKEOVER_LIKE": 76
-      },
-      "CARD_TESTING": {
-        "CARD_TESTING": 456
+        "NORMAL": 165,
+        "CARD_TESTING": 55
       },
       "SUSPICIOUS_VELOCITY": {
-        "NORMAL": 76
+        "NORMAL": 110
+      },
+      "CARD_TESTING": {
+        "NORMAL": 165,
+        "CARD_TESTING": 330
+      },
+      "AUTOMATED_CHECKOUT": {
+        "CARD_TESTING": 55
+      },
+      "ACCOUNT_TAKEOVER_LIKE": {
+        "CARD_TESTING": 5,
+        "ACCOUNT_TAKEOVER_LIKE": 50,
+        "NORMAL": 55
       }
     },
     "latency": {
-      "p50_ms": 0.346,
-      "p95_ms": 0.694,
-      "p99_ms": 1.086,
-      "mean_ms": 0.382
+      "p50_ms": 0.288,
+      "p95_ms": 0.506,
+      "p99_ms": 0.709,
+      "mean_ms": 0.281
     }
   },
   "lifecycle_aware": {
     "mode": "lifecycle_aware",
-    "sessions": 988,
+    "sessions": 990,
     "seed": 42,
     "overall": {
-      "precision": 0.8889,
-      "recall": 0.8889,
-      "f1": 0.8889,
-      "detection_rate": 0.8889,
+      "precision": 0.9286,
+      "recall": 0.9286,
+      "f1": 0.9286,
+      "detection_rate": 0.9286,
       "false_positive_rate": 0.25,
-      "true_positives": 608,
-      "false_positives": 76,
-      "true_negatives": 228,
-      "false_negatives": 76
+      "true_positives": 715,
+      "false_positives": 55,
+      "true_negatives": 165,
+      "false_negatives": 55
     },
     "per_scenario": {
       "ACCOUNT_TAKEOVER_LIKE": {
-        "count": 76,
-        "intent_accuracy": 0.9079,
-        "action_accuracy": 0.0132,
-        "avg_risk_score": 0.3928
+        "count": 55,
+        "intent_accuracy": 0.8909,
+        "action_accuracy": 0.6182,
+        "avg_risk_score": 0.8509
       },
       "AUTOMATED_CHECKOUT": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 0.0,
         "action_accuracy": 0.0,
-        "avg_risk_score": 0.4601
+        "avg_risk_score": 0.4773
       },
       "CARD_TESTING": {
-        "count": 380,
+        "count": 275,
         "intent_accuracy": 1.0,
-        "action_accuracy": 0.4,
-        "avg_risk_score": 0.6957
+        "action_accuracy": 0.6,
+        "avg_risk_score": 0.7946
       },
       "DISTRIBUTED_SUSPICIOUS_BEHAVIOR": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.9594
+        "avg_risk_score": 1.0
       },
       "LEGITIMATE_RETRY_BEHAVIOR": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.0593
+        "avg_risk_score": 0.1708
       },
       "LEGITIMATE_SHARED_DEVICE": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.1209
+        "avg_risk_score": 0.2643
       },
       "LEGITIMATE_SHARED_IP": {
-        "count": 76,
+        "count": 55,
         "intent_accuracy": 0.0,
         "action_accuracy": 0.0,
-        "avg_risk_score": 0.3563
+        "avg_risk_score": 0.4206
       },
-      "LOW_AND_SLOW_AUTOMATION": {
-        "count": 76,
-        "intent_accuracy": 0.0,
-        "action_accuracy": 1.0,
-        "avg_risk_score": 0.354
-      },
-      "NORMAL": {
-        "count": 76,
+      "LONGITUDINAL_DEVICE_CYCLING": {
+        "count": 55,
         "intent_accuracy": 1.0,
         "action_accuracy": 1.0,
-        "avg_risk_score": 0.0441
+        "avg_risk_score": 0.8998
+      },
+      "LONGITUDINAL_DEVICE_ROTATION": {
+        "count": 55,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.8855
+      },
+      "LONGITUDINAL_FAILURE_PATTERN": {
+        "count": 55,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.4141
+      },
+      "LONGITUDINAL_IP_CYCLING": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.9041
+      },
+      "LONGITUDINAL_LOW_AND_SLOW": {
+        "count": 55,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.4141
+      },
+      "LOW_AND_SLOW_AUTOMATION": {
+        "count": 55,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.3713
+      },
+      "NORMAL": {
+        "count": 55,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.1554
       }
     },
     "confusion_matrix": {
-      "AUTOMATED_CHECKOUT": {
-        "CARD_TESTING": 76
-      },
-      "ACCOUNT_TAKEOVER_LIKE": {
-        "ACCOUNT_TAKEOVER_LIKE": 69,
-        "CARD_TESTING": 7
-      },
       "NORMAL": {
-        "NORMAL": 228,
-        "ACCOUNT_TAKEOVER_LIKE": 76
-      },
-      "CARD_TESTING": {
-        "CARD_TESTING": 456
+        "NORMAL": 165,
+        "CARD_TESTING": 55
       },
       "SUSPICIOUS_VELOCITY": {
-        "NORMAL": 76
+        "NORMAL": 55,
+        "CARD_TESTING": 55
+      },
+      "CARD_TESTING": {
+        "CARD_TESTING": 495
+      },
+      "AUTOMATED_CHECKOUT": {
+        "CARD_TESTING": 55
+      },
+      "ACCOUNT_TAKEOVER_LIKE": {
+        "CARD_TESTING": 6,
+        "ACCOUNT_TAKEOVER_LIKE": 104
       }
     },
     "latency": {
-      "p50_ms": 0.428,
-      "p95_ms": 0.848,
-      "p99_ms": 1.128,
-      "mean_ms": 0.47
+      "p50_ms": 0.294,
+      "p95_ms": 0.549,
+      "p99_ms": 0.839,
+      "mean_ms": 0.301
     }
   },
   "comparison": {
-    "precision_delta": 0.0,
-    "recall_delta": 0.0,
-    "f1_delta": 0.0,
+    "precision_delta": 0.0397,
+    "recall_delta": 0.3572,
+    "f1_delta": 0.2329,
     "fpr_delta": 0.0
+  },
+  "scenario_comparison": {
+    "ACCOUNT_TAKEOVER_LIKE": {
+      "session_only_risk": 0.5075,
+      "lifecycle_aware_risk": 0.8509,
+      "risk_delta": 0.3434,
+      "session_only_action_acc": 0.0909,
+      "lifecycle_aware_action_acc": 0.6182,
+      "action_acc_delta": 0.5273
+    },
+    "AUTOMATED_CHECKOUT": {
+      "session_only_risk": 0.4773,
+      "lifecycle_aware_risk": 0.4773,
+      "risk_delta": 0.0,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 0.0,
+      "action_acc_delta": 0.0
+    },
+    "CARD_TESTING": {
+      "session_only_risk": 0.7946,
+      "lifecycle_aware_risk": 0.7946,
+      "risk_delta": 0.0,
+      "session_only_action_acc": 0.6,
+      "lifecycle_aware_action_acc": 0.6,
+      "action_acc_delta": 0.0
+    },
+    "DISTRIBUTED_SUSPICIOUS_BEHAVIOR": {
+      "session_only_risk": 1.0,
+      "lifecycle_aware_risk": 1.0,
+      "risk_delta": 0.0,
+      "session_only_action_acc": 1.0,
+      "lifecycle_aware_action_acc": 1.0,
+      "action_acc_delta": 0.0
+    },
+    "LEGITIMATE_RETRY_BEHAVIOR": {
+      "session_only_risk": 0.0708,
+      "lifecycle_aware_risk": 0.1708,
+      "risk_delta": 0.1,
+      "session_only_action_acc": 1.0,
+      "lifecycle_aware_action_acc": 1.0,
+      "action_acc_delta": 0.0
+    },
+    "LEGITIMATE_SHARED_DEVICE": {
+      "session_only_risk": 0.2643,
+      "lifecycle_aware_risk": 0.2643,
+      "risk_delta": 0.0,
+      "session_only_action_acc": 1.0,
+      "lifecycle_aware_action_acc": 1.0,
+      "action_acc_delta": 0.0
+    },
+    "LEGITIMATE_SHARED_IP": {
+      "session_only_risk": 0.4206,
+      "lifecycle_aware_risk": 0.4206,
+      "risk_delta": 0.0,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 0.0,
+      "action_acc_delta": 0.0
+    },
+    "LONGITUDINAL_DEVICE_CYCLING": {
+      "session_only_risk": 0.1761,
+      "lifecycle_aware_risk": 0.8998,
+      "risk_delta": 0.7237,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 1.0,
+      "action_acc_delta": 1.0
+    },
+    "LONGITUDINAL_DEVICE_ROTATION": {
+      "session_only_risk": 0.1761,
+      "lifecycle_aware_risk": 0.8855,
+      "risk_delta": 0.7094,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 0.0,
+      "action_acc_delta": 0.0
+    },
+    "LONGITUDINAL_FAILURE_PATTERN": {
+      "session_only_risk": 0.1761,
+      "lifecycle_aware_risk": 0.4141,
+      "risk_delta": 0.238,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 0.0,
+      "action_acc_delta": 0.0
+    },
+    "LONGITUDINAL_IP_CYCLING": {
+      "session_only_risk": 0.1761,
+      "lifecycle_aware_risk": 0.9041,
+      "risk_delta": 0.728,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 0.0,
+      "action_acc_delta": 0.0
+    },
+    "LONGITUDINAL_LOW_AND_SLOW": {
+      "session_only_risk": 0.1761,
+      "lifecycle_aware_risk": 0.4141,
+      "risk_delta": 0.238,
+      "session_only_action_acc": 0.0,
+      "lifecycle_aware_action_acc": 0.0,
+      "action_acc_delta": 0.0
+    },
+    "LOW_AND_SLOW_AUTOMATION": {
+      "session_only_risk": 0.3713,
+      "lifecycle_aware_risk": 0.3713,
+      "risk_delta": 0.0,
+      "session_only_action_acc": 1.0,
+      "lifecycle_aware_action_acc": 1.0,
+      "action_acc_delta": 0.0
+    },
+    "NORMAL": {
+      "session_only_risk": 0.0554,
+      "lifecycle_aware_risk": 0.1554,
+      "risk_delta": 0.1,
+      "session_only_action_acc": 1.0,
+      "lifecycle_aware_action_acc": 1.0,
+      "action_acc_delta": 0.0
+    }
   }
 }

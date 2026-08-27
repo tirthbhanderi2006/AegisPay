@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.api.lifecycle_routes import lifecycle_router
 from app.api.firewall_routes import firewall_router
+from app.api.entity_routes import entity_router
 from app.config import settings
 from app.db import repository
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(router)
     app.include_router(lifecycle_router)
     app.include_router(firewall_router)
+    app.include_router(entity_router)
 
     @app.on_event("startup")
     def _startup():

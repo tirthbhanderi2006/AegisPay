@@ -158,20 +158,57 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration + li
 | 12 | Live Groq smoke tests — all 4 fixtures verified end-to-end + persisted to Postgres | DONE |
 | 13 | **Next.js 14 command dashboard** (`dashboard/`) — 3-panel UI, mock fallback, build green, live-verified vs backend | DONE |
 | 14 | **Phase 1 — Transaction/Evidence Lifecycle Foundation:** domain models (lifecycle.py), normalized DB tables (lifecycle_repo.py), reconstruction service (reconstruction.py), event ingestion API (lifecycle_routes.py), AegisState enrichment (enrich_from_lifecycle node), fixtures ×2, test suite 16 new tests | DONE |
-| 15 | **Phase 2 — Behavioral Intent Firewall:** 27 deterministic features (`features.py`), weighted risk engine + combination boost (`scoring.py`), multi-condition intent classifier (`intent.py`), action policy (`policy.py`), orchestrator (`engine.py`), evaluation & ablation harness (`evaluation.py`), synthetic payment environment (`app/synthetic/`), API endpoints (`firewall_routes.py`), PostgreSQL `firewall_assessments` persistence table, dispute-defense context enrichment, 46 new tests (104 total green) | DONE |
+| 15 | **Phase 2 — Behavioral Intent Firewall:** 27 deterministic features (`features.py`), weighted risk engine + combination boost (`scoring.py`), multi-condition intent classifier (`intent.py`), action policy (`policy.py`), orchestrator (`engine.py`), evaluation & ablation harness (`evaluation.py`), synthetic payment environment (`app/synthetic/`), API endpoints (`firewall_routes.py`), PostgreSQL `firewall_assessments` persistence table, dispute-defense context enrichment, 46 new tests | DONE |
+| 16 | **Phase 2.1 — Behavioral Firewall Validation & Longitudinal Ablation Fix:** 5 true longitudinal scenarios (`generator.py`), deterministic feature contribution breakdown (`scoring.py`), evidence quality scoring (`engine.py`), safe shared-IP attenuation, CARD_TESTING A-E variant breakdown, threshold sensitivity grid, stage latency benchmarks, 7 new tests | DONE |
+| 17 | **Phase 3 — Cross-Merchant Entity Intelligence:** Deterministic entity graph (`graph.py`), risk propagation engine (`risk.py`), 10 synthetic scenarios (`synthetic.py`), headline ablation harness (`evaluation.py`), explainability endpoint (`/risk/explanation/{id}`), PostgreSQL persistence (`repository.py`), conservative action policy, pre-dispute context injection, 17 new tests (**128 / 128 tests green in 1.56s**) | DONE |
 
-### Phase 2 Evaluation & Benchmark Results (988 synthetic sessions, seed 42)
-| Metric | Overall Value |
-|---|---|
-| Precision | **88.89%** |
-| Recall | **88.89%** |
-| F1 Score | **88.89%** |
-| Detection Rate | **88.89%** |
-| False Positive Rate | **25.00%** (conservative CHALLENGE on office shared-IP traffic) |
-| Latency P50 | **0.35 ms** |
-| Latency P95 | **0.69 ms** |
-| Latency P99 | **1.09 ms** |
-| Total Tests Green | **104 / 104 passed** (1.36s) |
+### Phase 3 Headline Ablation Experiment: Local vs Cross-Merchant Engine (500 samples, seed 42)
+| Metric | Merchant-Local Engine (Siloed) | Cross-Merchant Engine (Network Graph) | Memory Delta (Network Gain) |
+|---|---|---|---|
+| **Precision** | 100.00% | **100.00%** | +0.00% |
+| **Recall / Detection Rate** | 50.00% | **100.00%** | **+50.00% (Headline Proof)** |
+| **F1 Score** | 66.67% | **100.00%** | **+33.33%** |
+| **False Positive Rate** | 0.00% | **0.00%** | +0.00% |
+| **P50 Latency** | 0.261 ms | 0.773 ms | +0.512 ms |
+| **P95 Latency** | 0.585 ms | 1.675 ms | +1.090 ms |
+| **P99 Latency** | 0.931 ms | 2.202 ms | +1.271 ms |
+
+### Phase 2.1 Ablation Experiment: Session-Only vs Lifecycle-Aware (990 sessions, seed 42)
+| Metric | Session-Only Engine | Lifecycle-Aware Engine | Delta (Memory Gain) |
+|---|---|---|---|
+| **Precision** | 88.89% | **92.86%** | **+3.97%** |
+| **Recall / Detection Rate** | 57.14% | **92.86%** | **+35.72%** |
+| **F1 Score** | 69.57% | **92.86%** | **+23.29%** |
+| **False Positive Rate** | 25.00% | 25.00% | +0.00% |
+| **P50 Latency** | 0.29 ms | 0.29 ms | +0.00 ms |
+| **P95 Latency** | 0.51 ms | 0.55 ms | +0.04 ms |
+| **P99 Latency** | 0.71 ms | 0.84 ms | +0.13 ms |
+
+### Longitudinal Scenario Risk Deltas
+| Scenario | Session-Only Risk | Lifecycle-Aware Risk | Risk Delta | Detection Source |
+|---|---|---|---|---|
+| `LONGITUDINAL_DEVICE_CYCLING` | 0.176 (ALLOW) | **0.900 (BLOCK)** | **+0.724** | 5 accounts observed on physical device |
+| `LONGITUDINAL_DEVICE_ROTATION` | 0.176 (ALLOW) | **0.885 (BLOCK)** | **+0.709** | Account rotated through 5 devices in 48h |
+| `LONGITUDINAL_IP_CYCLING` | 0.176 (ALLOW) | **0.904 (BLOCK)** | **+0.728** | IP hosted 8 accounts with 80% failure rate |
+| `LONGITUDINAL_LOW_AND_SLOW` | 0.176 (ALLOW) | **0.414 (CHALLENGE)** | **+0.238** | 12 probing attempts accumulated across days |
+| `LONGITUDINAL_FAILURE_PATTERN` | 0.176 (ALLOW) | **0.414 (CHALLENGE)** | **+0.238** | 90% failure history on card/account |
+
+### CARD_TESTING A-E Sub-Variant Breakdown (55 samples per variant)
+| Variant | Description | Avg Risk | ALLOW % | CHALLENGE % | BLOCK % |
+|---|---|---|---|---|---|
+| **Variant A** | Rapid attempts (12 in 2m, short retry) | 0.605 | 0.0% | 100.0% | 0.0% |
+| **Variant B** | Slower attempts (8 attempts, 20s spacing) | 0.776 | 0.0% | 0.0% | 100.0% |
+| **Variant C** | Amount variation ($0.50 to $500) | 0.592 | 0.0% | 100.0% | 0.0% |
+| **Variant D** | Rotating devices (10 cycled devices) | 1.000 | 0.0% | 0.0% | 100.0% |
+| **Variant E** | Rotating IPs (10 cycled IPs) | 1.000 | 0.0% | 0.0% | 100.0% |
+
+### Stage Latency Breakdown (Local Deterministic Execution Benchmark)
+| Stage | Session-Only P50 | Lifecycle-Aware P50 | Lifecycle-Aware P95 | Lifecycle-Aware P99 |
+|---|---|---|---|---|
+| **Feature Extraction** | 0.159 ms | 0.161 ms | 0.290 ms | 0.510 ms |
+| **Risk Scoring** | 0.028 ms | 0.030 ms | 0.051 ms | 0.082 ms |
+| **Intent Classification** | 0.003 ms | 0.003 ms | 0.006 ms | 0.012 ms |
+| **Total Evaluation** | **0.192 ms** | **0.194 ms** | **0.348 ms** | **0.593 ms** |
 
 ### Live-run verification results (2026-08-25)
 | Fixture | decision | final_status | iterations | notes |
@@ -212,6 +249,11 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration + li
 - **ADR-013 — Phase 2 Behavioral Intent Firewall Architecture.** Real-time pre/intra-payment risk intelligence system. Purely deterministic feature extraction and scoring: **NO ML model, NO LLM** in the firewall evaluation path. Produces `risk_score` [0.0, 1.0], `intent` (`NORMAL`, `CARD_TESTING`, `AUTOMATED_CHECKOUT`, `ACCOUNT_TAKEOVER_LIKE`, `SUSPICIOUS_VELOCITY`, `UNKNOWN`), `action` (`ALLOW`, `CHALLENGE`, `BLOCK`), and structured `signals` with severity tags. Firewall assessments are stored in `firewall_assessments` table and linked to future disputes strictly as contextual data — they never alter deterministic dispute-defense math.
 - **ADR-014 — Synthetic Dataset Methodology & Adversarial Variations.** To rigorously validate behavioral intelligence without proprietary gateway data, `app.synthetic.generator` deterministically produces 13 scenarios across 9 core classes (including 5 adversarial card-testing variations: rapid attempts, slow attempts, varying amounts, rotating devices, rotating IPs). Includes edge cases for family shared devices, office shared IPs, and legitimate network retries to evaluate false positive rates.
 - **ADR-015 — Multi-Signal Combination Boost Scoring.** Rather than single-threshold rules (e.g. "5 failures = block"), scoring uses 6 weighted component groups (`W_VELOCITY=0.25`, `W_RETRY=0.20`, `W_INFRASTRUCTURE=0.20`, `W_VARIATION=0.15`, `W_HISTORICAL=0.10`, `W_SEQUENCE=0.10`) coupled with a multi-signal combination multiplier (1.5x for 2 firing components, 2.0x for 3, 2.5x for 4+). This operationalizes the core insight: high velocity alone may be legitimate, but high velocity combined with failure rates and instrument cycling is malicious.
+- **ADR-016 — Longitudinal Attack Detection & Safe Shared-Network Attenuation.** Single-session firewalls fail on attacks where each individual session is small and benign (device cycling across accounts, IP cycling, low-and-slow probing). Phase 2.1 enriches cross-entity counts (`accounts_on_device`, `devices_on_account`, `historical_failure_rate`, `historical_payment_velocity`) from persistent memory. Furthermore, legitimate shared IP networks (corporate offices, universities, NAT) where payments succeed on distinct physical devices have their IP risk attenuated to 0.0, avoiding false BLOCKs and yielding an explainable CHALLENGE policy.
+- **ADR-017 — Deterministic Evidence Quality & Feature Contribution Attribution.** Every assessment exposes `evidence_quality` [0.0, 1.0] (computed from session duration, identifier presence, and history depth) and exact `feature_contributions` mapping each component (`velocity`, `retry`, `variation`, `infrastructure`, `historical_deviation`, `sequence`) to its mathematical delta on the final risk score. Fully explainable without ML or LLMs.
+- **ADR-018 — Deterministic Cross-Merchant Entity Intelligence & Risk Propagation.** Cross-merchant intelligence is built on an explainable, deterministic entity graph with 7 entity types (`merchant`, `account`, `device`, `ip`, `payment_instrument`, `transaction`, `order`) and 8 relationship edge types. Risk decays mathematically across graph proximity ($1.0\times$ direct, $0.5\times$ 1-hop, $0.25\times$ 2-hop) into an aggregate transaction risk score. No ML/GNN/embedding models are used.
+- **ADR-019 — Temporal Cutoff Guardrails (No Hindsight Leakage).** Every graph edge and node stores first/last seen timestamps. When reconstructing or evaluating entity risk at timestamp $T$, the graph strictly evaluates against an `as_of = T` temporal envelope. Events observed after $T$ are invisible, mathematically preventing hindsight leakage.
+- **ADR-020 — Mathematical Privacy & Anonymization Boundaries.** To prevent counterparty merchant intelligence leakage, `GET /risk/explanation/{transaction_id}` never reveals counterparty merchant names, IDs, or customer PII. Only aggregated counts, anonymized entity tokens (`dev_***7a9f`), signal severities, and mathematical contribution deltas are exposed.
 
 ## 8. Fixture Scenarios (`data/fixtures/`)
 

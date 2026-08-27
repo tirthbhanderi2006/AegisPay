@@ -237,6 +237,7 @@ def extract_lifecycle_aware(
     # --- Historical transaction count ---
     hist_txn_ids: Set[str] = set()
     hist_fail_count = 0
+    hist_success_count = 0
     hist_total_payment_events = 0
     hist_devices: Set[str] = set()
     hist_ips: Set[str] = set()
@@ -244,7 +245,7 @@ def extract_lifecycle_aware(
     hist_timestamps: List[datetime] = []
 
     for ev in historical_events:
-        txn_id = ev.get("transaction_id")
+        txn_id = ev.get("transaction_id") or ev.get("session_id") or ev.get("metadata", {}).get("transaction_id") or ev.get("event_id")
         if txn_id:
             hist_txn_ids.add(txn_id)
         etype = ev.get("event_type", "")
@@ -252,6 +253,8 @@ def extract_lifecycle_aware(
             hist_total_payment_events += 1
         if etype in _PAYMENT_FAIL_TYPES:
             hist_fail_count += 1
+        elif etype in _PAYMENT_SUCCESS_TYPES:
+            hist_success_count += 1
         dh = ev.get("device_hash") or ev.get("metadata", {}).get("device_hash")
         if dh:
             hist_devices.add(dh)
@@ -266,8 +269,11 @@ def extract_lifecycle_aware(
             hist_timestamps.append(t)
 
     features.historical_txn_count = len(hist_txn_ids)
+    total_outcomes = hist_fail_count + hist_success_count
     features.historical_failure_rate = (
-        hist_fail_count / hist_total_payment_events if hist_total_payment_events > 0 else 0.0
+        hist_fail_count / total_outcomes if total_outcomes > 0 else (
+            hist_fail_count / hist_total_payment_events if hist_total_payment_events > 0 else 0.0
+        )
     )
 
     # Historical payment velocity (payments per day)

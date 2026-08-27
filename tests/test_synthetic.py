@@ -39,7 +39,7 @@ class TestReproducibility:
 
 class TestScenarioCoverage:
     def test_all_scenarios_present(self):
-        d = generate_dataset(sessions=130, seed=42)
+        d = generate_dataset(sessions=180, seed=42)
         scenarios = set(s["scenario"] for s in d)
         assert "NORMAL" in scenarios
         assert "CARD_TESTING_A" in scenarios
@@ -54,6 +54,11 @@ class TestScenarioCoverage:
         assert "LEGITIMATE_SHARED_IP" in scenarios
         assert "LEGITIMATE_RETRY_BEHAVIOR" in scenarios
         assert "DISTRIBUTED_SUSPICIOUS_BEHAVIOR" in scenarios
+        assert "LONGITUDINAL_DEVICE_CYCLING" in scenarios
+        assert "LONGITUDINAL_IP_CYCLING" in scenarios
+        assert "LONGITUDINAL_LOW_AND_SLOW" in scenarios
+        assert "LONGITUDINAL_DEVICE_ROTATION" in scenarios
+        assert "LONGITUDINAL_FAILURE_PATTERN" in scenarios
 
 
 class TestEventValidity:
@@ -74,7 +79,7 @@ class TestEventValidity:
 
     def test_no_raw_pan_in_events(self):
         """Events must never contain raw PAN data."""
-        d = generate_dataset(sessions=26, seed=42)
+        d = generate_dataset(sessions=36, seed=42)
         for sample in d:
             for ev in sample["events"]:
                 # Check no field looks like a card number
@@ -85,17 +90,21 @@ class TestEventValidity:
 
 class TestGroundTruth:
     def test_labels_are_valid(self):
-        d = generate_dataset(sessions=130, seed=42)
+        d = generate_dataset(sessions=180, seed=42)
         valid_labels = {
             "NORMAL", "CARD_TESTING", "LOW_AND_SLOW_AUTOMATION",
             "ACCOUNT_TAKEOVER_LIKE", "AUTOMATED_CHECKOUT",
             "LEGITIMATE_SHARED_DEVICE", "LEGITIMATE_SHARED_IP",
             "LEGITIMATE_RETRY_BEHAVIOR", "DISTRIBUTED_SUSPICIOUS_BEHAVIOR",
+            "LONGITUDINAL_DEVICE_CYCLING", "LONGITUDINAL_IP_CYCLING",
+            "LONGITUDINAL_LOW_AND_SLOW", "LONGITUDINAL_DEVICE_ROTATION",
+            "LONGITUDINAL_FAILURE_PATTERN",
         }
         for sample in d:
             assert sample["label"] in valid_labels, f"Unknown label: {sample['label']}"
 
     def test_actions_are_valid(self):
-        d = generate_dataset(sessions=130, seed=42)
+        d = generate_dataset(sessions=180, seed=42)
         for sample in d:
             assert sample["expected_action"] in ("ALLOW", "CHALLENGE", "BLOCK")
+

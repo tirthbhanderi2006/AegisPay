@@ -12,7 +12,7 @@ from app.models.firewall import BehavioralFeatures, IntentClass
 
 
 def _check_card_testing(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
-    """CARD_TESTING: high velocity + high failure + short retries + multiple instruments."""
+    """CARD_TESTING: high velocity + high failure + short retries + multiple instruments (session or longitudinal)."""
     reasons: List[str] = []
     conditions_met = 0
 
@@ -32,7 +32,17 @@ def _check_card_testing(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
         conditions_met += 1
         reasons.append(f"Failure-to-success ratio {f.failed_to_success_ratio:.1f}")
 
-    # Need at least 3 of 5 conditions
+    # Longitudinal card testing detection (accumulated failures across multiple sessions)
+    if f.historical_txn_count >= 3 and f.historical_failure_rate >= 0.70:
+        conditions_met += 2
+        reasons.append(f"Longitudinal failure concentration: {round(f.historical_failure_rate * 100)}% failures across {f.historical_txn_count} historical transactions")
+
+    # Longitudinal device card cycling (device used across multiple accounts)
+    if f.accounts_on_device >= 4:
+        conditions_met += 2
+        reasons.append(f"Device cycling: {f.accounts_on_device} accounts associated with device")
+
+    # Need at least 3 conditions
     return conditions_met >= 3, reasons
 
 
@@ -59,7 +69,7 @@ def _check_automated_checkout(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
 
 
 def _check_account_takeover(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
-    """ACCOUNT_TAKEOVER_LIKE: device/IP changes + velocity above baseline."""
+    """ACCOUNT_TAKEOVER_LIKE: device/IP changes + velocity above baseline (session or longitudinal)."""
     reasons: List[str] = []
     conditions_met = 0
 
@@ -75,12 +85,16 @@ def _check_account_takeover(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
     if f.payment_attempts_last_5m >= 3:
         conditions_met += 1
         reasons.append(f"High velocity: {f.payment_attempts_last_5m} attempts in 5 min")
-    if f.historical_txn_count > 0 and f.devices_on_account > f.historical_device_count * 2:
+    if f.devices_on_account >= 4:
         conditions_met += 1
-        reasons.append(f"Device count anomaly: {f.devices_on_account} vs historical {f.historical_device_count}")
+        reasons.append(f"Excessive distinct devices associated with account ({f.devices_on_account})")
+    if f.historical_txn_count > 0 and f.devices_on_account > f.historical_device_count * 2:
+        conditions_met += 2
+        reasons.append(f"Longitudinal device anomaly: {f.devices_on_account} devices vs historical baseline {f.historical_device_count}")
 
-    # Need at least 2 conditions (device/IP change + velocity indicator)
+    # Need at least 2 conditions (device/IP change + velocity/device indicator)
     return conditions_met >= 2, reasons
+
 
 
 def _check_suspicious_velocity(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
@@ -94,6 +108,7 @@ def _check_suspicious_velocity(f: BehavioralFeatures) -> Tuple[bool, List[str]]:
         reasons.append(f"{f.payment_attempts_last_5m} attempts in 5 min")
         return True, reasons
     return False, reasons
+
 
 
 def classify_intent(features: BehavioralFeatures) -> Tuple[IntentClass, List[str]]:
@@ -110,7 +125,7 @@ def classify_intent(features: BehavioralFeatures) -> Tuple[IntentClass, List[str
         + features.retry_count
         + (1 if features.session_duration_s > 0 else 0)
     )
-    if total_events == 0 and features.session_duration_s == 0:
+    if total_events == 0 and features.session_duration_s == 0 and features.historical_txn_count == 0:
         return IntentClass.UNKNOWN, ["Insufficient session telemetry"]
 
     # Priority-ordered classification
@@ -131,3 +146,4 @@ def classify_intent(features: BehavioralFeatures) -> Tuple[IntentClass, List[str
         return IntentClass.SUSPICIOUS_VELOCITY, reasons
 
     return IntentClass.NORMAL, ["Behavior within expected thresholds"]
+

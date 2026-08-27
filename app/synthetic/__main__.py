@@ -36,6 +36,18 @@ def main():
     abl_p.add_argument("--seed", type=int, default=42)
     abl_p.add_argument("--output", type=str, default=None, help="Output JSON file")
 
+    # breakdown
+    bd_p = sub.add_parser("breakdown", help="Investigate CARD_TESTING A-E breakdown")
+    bd_p.add_argument("--sessions", type=int, default=180)
+    bd_p.add_argument("--seed", type=int, default=42)
+    bd_p.add_argument("--output", type=str, default=None, help="Output JSON file")
+
+    # sensitivity
+    sens_p = sub.add_parser("sensitivity", help="Run threshold sensitivity analysis")
+    sens_p.add_argument("--sessions", type=int, default=180)
+    sens_p.add_argument("--seed", type=int, default=42)
+    sens_p.add_argument("--output", type=str, default=None, help="Output JSON file")
+
     args = parser.parse_args()
 
     if args.command == "generate":
@@ -101,13 +113,13 @@ def main():
                 json.dump(results, f, indent=2)
             print(f"Results written to {args.output}")
 
-        print(f"\n=== Ablation Experiment ===")
+        print(f"\n=== Ablation Experiment ({args.sessions} sessions) ===")
         for mode in ["session_only", "lifecycle_aware"]:
             o = results[mode]["overall"]
             lat = results[mode]["latency"]
             print(f"\n  [{mode}]")
             print(f"    Precision={o['precision']:.4f}  Recall={o['recall']:.4f}  F1={o['f1']:.4f}")
-            print(f"    FPR={o['false_positive_rate']:.4f}")
+            print(f"    Detection Rate={o['detection_rate']:.4f}  FPR={o['false_positive_rate']:.4f}")
             print(f"    Latency P50={lat['p50_ms']:.2f}ms  P95={lat['p95_ms']:.2f}ms  P99={lat['p99_ms']:.2f}ms")
 
         c = results["comparison"]
@@ -117,6 +129,42 @@ def main():
         print(f"    F1:        {c['f1_delta']:+.4f}")
         print(f"    FPR:       {c['fpr_delta']:+.4f}")
 
+        print("\n  [Per-Scenario Risk & Accuracy Deltas]")
+        for sc, cmp_data in results.get("scenario_comparison", {}).items():
+            print(f"    {sc:36s} SessionRisk={cmp_data['session_only_risk']:.3f} -> LifecycleRisk={cmp_data['lifecycle_aware_risk']:.3f} (delta {cmp_data['risk_delta']:+.3f})")
+
+
+    elif args.command == "breakdown":
+        from app.firewall.evaluation import run_card_testing_breakdown
+        results = run_card_testing_breakdown(sessions=args.sessions, seed=args.seed)
+
+        if args.output:
+            with open(args.output, "w") as f:
+                json.dump(results, f, indent=2)
+            print(f"Results written to {args.output}")
+
+        print(f"\n=== CARD_TESTING A-E Breakdown ({args.sessions} total sessions) ===")
+        print(f"{'Variant':18s} | {'Samples':7s} | {'AvgRisk':7s} | {'MinRisk':7s} | {'MaxRisk':7s} | {'ALLOW%':7s} | {'CHALLENGE%':10s} | {'BLOCK%':7s}")
+        print("-" * 85)
+        for var, d in results.items():
+            print(f"{var:18s} | {d['samples']:7d} | {d['avg_risk']:7.3f} | {d['min_risk']:7.3f} | {d['max_risk']:7.3f} | {d['allow_pct']:6.1f}% | {d['challenge_pct']:9.1f}% | {d['block_pct']:6.1f}%")
+
+    elif args.command == "sensitivity":
+        from app.firewall.evaluation import run_threshold_sensitivity
+        results = run_threshold_sensitivity(sessions=args.sessions, seed=args.seed)
+
+        if args.output:
+            with open(args.output, "w") as f:
+                json.dump(results, f, indent=2)
+            print(f"Results written to {args.output}")
+
+        print(f"\n=== Threshold Sensitivity Analysis ({results['total_samples']} samples) ===")
+        print(f"{'Low':5s} | {'High':5s} | {'Precision':9s} | {'Recall':8s} | {'F1':8s} | {'FPR':8s} | {'ALLOW%':7s} | {'CHALLENGE%':10s} | {'BLOCK%':7s}")
+        print("-" * 88)
+        for g in results["grid"]:
+            print(f"{g['low_threshold']:5.2f} | {g['high_threshold']:5.2f} | {g['precision']:9.4f} | {g['recall']:8.4f} | {g['f1']:8.4f} | {g['fpr']:8.4f} | {g['allow_pct']:6.1f}% | {g['challenge_pct']:9.1f}% | {g['block_pct']:6.1f}%")
+
 
 if __name__ == "__main__":
     main()
+

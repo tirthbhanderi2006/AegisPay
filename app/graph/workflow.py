@@ -71,6 +71,8 @@ def build_initial_state(event: DisputeEvent) -> AegisState:
         evidence_completeness=None,
         # Phase 2 — firewall assessment context
         firewall_assessments=None,
+        # Phase 3 — cross-merchant entity context
+        cross_merchant_context=None,
     )
 
 
@@ -98,7 +100,30 @@ def enrich_from_lifecycle_node(state: AegisState) -> Dict[str, Any]:
     except Exception as exc:
         logger.warning("Failed to fetch firewall assessments for %s: %s", txn_id, exc)
 
-    if reconstruction is None and not assessments:
+    # Phase 3: Pre-dispute cross-merchant intelligence context (strictly as_of dispute creation or txn time)
+    cross_context = None
+    try:
+        from app.entity_intelligence.repository import entity_repo
+        from app.entity_intelligence.risk import compute_cross_merchant_risk
+        from app.lifecycle_repo import lifecycle_repo
+        txn_rec = lifecycle_repo.get_transaction(txn_id)
+        if txn_rec:
+            dev_hash = txn_rec.get("device_hash")
+            ip_addr = txn_rec.get("ip_address")
+            created_at = txn_rec.get("created_at")
+            graph = entity_repo.get_graph()
+            dev_risk = compute_cross_merchant_risk(graph, f"dev_{dev_hash}", as_of=created_at) if dev_hash else None
+            ip_risk = compute_cross_merchant_risk(graph, f"ip_{ip_addr}", as_of=created_at) if ip_addr else None
+            if dev_risk or ip_risk:
+                cross_context = {
+                    "device_risk": dev_risk.to_anonymized_dict() if dev_risk else None,
+                    "ip_risk": ip_risk.to_anonymized_dict() if ip_risk else None,
+                    "as_of": created_at,
+                }
+    except Exception as exc:
+        logger.warning("Failed to fetch cross-merchant entity context for %s: %s", txn_id, exc)
+
+    if reconstruction is None and not assessments and cross_context is None:
         return {}
 
     enrichment: Dict[str, Any] = {}
@@ -112,6 +137,8 @@ def enrich_from_lifecycle_node(state: AegisState) -> Dict[str, Any]:
         })
     if assessments:
         enrichment["firewall_assessments"] = assessments
+    if cross_context:
+        enrichment["cross_merchant_context"] = cross_context
 
     return enrichment
 
