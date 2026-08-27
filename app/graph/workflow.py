@@ -69,6 +69,8 @@ def build_initial_state(event: DisputeEvent) -> AegisState:
         evidence_missing=None,
         evidence_conflicts=None,
         evidence_completeness=None,
+        # Phase 2 — firewall assessment context
+        firewall_assessments=None,
     )
 
 
@@ -80,23 +82,39 @@ def enrich_from_lifecycle_node(state: AegisState) -> Dict[str, Any]:
     """
     event = state["event"]
     txn_id = event.disputed_transaction_id
+    reconstruction = None
     try:
         from app.engine.reconstruction import reconstruct_transaction
         reconstruction = reconstruct_transaction(txn_id)
     except Exception as exc:
         logger.warning("Lifecycle enrichment failed for %s: %s", txn_id, exc)
+
+    assessments: List[Dict[str, Any]] = []
+    try:
+        from app.lifecycle_repo import lifecycle_repository
+        raw_assessments = lifecycle_repository.get_assessments_for_transaction(txn_id)
+        if raw_assessments:
+            assessments = [dict(a) for a in raw_assessments]
+    except Exception as exc:
+        logger.warning("Failed to fetch firewall assessments for %s: %s", txn_id, exc)
+
+    if reconstruction is None and not assessments:
         return {}
 
-    if reconstruction is None:
-        return {}
+    enrichment: Dict[str, Any] = {}
+    if reconstruction is not None:
+        enrichment.update({
+            "transaction_timeline": [entry.model_dump() for entry in reconstruction.timeline],
+            "evidence_records": [],
+            "evidence_missing": reconstruction.evidence_missing,
+            "evidence_conflicts": reconstruction.contradictory_events,
+            "evidence_completeness": reconstruction.completeness_score,
+        })
+    if assessments:
+        enrichment["firewall_assessments"] = assessments
 
-    return {
-        "transaction_timeline": [entry.model_dump() for entry in reconstruction.timeline],
-        "evidence_records": [],  # populated from evidence_records table if needed
-        "evidence_missing": reconstruction.evidence_missing,
-        "evidence_conflicts": reconstruction.contradictory_events,
-        "evidence_completeness": reconstruction.completeness_score,
-    }
+    return enrichment
+
 
 
 def parse_dispute_node(state: AegisState) -> Dict[str, Any]:
@@ -237,15 +255,17 @@ def serialize_result(state: Dict[str, Any], persisted: bool = False) -> Dict[str
         "notice": state.get("notice"),
         "persisted": persisted,
     }
-    # Phase 1 — include lifecycle evidence data when present
-    if state.get("transaction_timeline") is not None:
+    # Phase 1 & 2 — include lifecycle evidence and firewall assessment data when present
+    if state.get("transaction_timeline") is not None or state.get("firewall_assessments") is not None:
         result["lifecycle"] = {
             "transaction_timeline": state.get("transaction_timeline", []),
             "evidence_missing": state.get("evidence_missing", []),
             "evidence_conflicts": state.get("evidence_conflicts", []),
             "evidence_completeness": state.get("evidence_completeness"),
+            "firewall_assessments": state.get("firewall_assessments", []),
         }
     return result
+
 
 
 def build_workflow():
