@@ -124,7 +124,77 @@ When a dispute arrives via `POST /webhooks/dispute`:
 | `normal_transaction.json` | Complete lifecycle: checkout → auth → payment → order → fulfillment (no dispute) |
 | `disputed_transaction.json` | Same lifecycle + `DISPUTE_OPENED` event |
 
+## Phase 2: Behavioral Intent Firewall
+
+AegisPay includes a **deterministic, explainable, low-latency Behavioral Intent Firewall** that operates BEFORE and DURING payment processing.
+
+> [!IMPORTANT]
+> **No ML model or LLM is used in the real-time Intent Firewall.**
+> The firewall prioritizes deterministic, explainable, sub-millisecond behavioral signals. ML can be introduced later for score calibration once sufficiently reliable historical outcomes exist.
+
+### Core Pipeline
+
+```
+Checkout / Session Telemetry
+      ↓
+Deterministic Feature Extraction (27 features: velocity, retries, instruments, infra, session, history)
+      ↓
+Behavioral Intent Engine (weighted components + multi-signal combination boost)
+      ↓
+Risk Score [0.0 - 1.0] + Intent Class + Explainable Signals
+      ↓
+Action Policy: ALLOW (<0.3) / CHALLENGE (0.3-0.7) / BLOCK (≥0.7)
+      ↓
+Payment lifecycle continues → Assessment persisted as context (never alters dispute logic)
+```
+
+### Intent Classes
+
+- `NORMAL`: Behavior within expected baselines
+- `CARD_TESTING`: High velocity + rapid retries + failure concentration + multiple instruments
+- `AUTOMATED_CHECKOUT`: Bot-like inter-event timing consistency (<0.5s stddev) + fast checkout (<2s)
+- `ACCOUNT_TAKEOVER_LIKE`: Rapid device/IP switching on an account + velocity spikes
+- `SUSPICIOUS_VELOCITY`: Abnormal payment attempt frequency exceeding baselines
+- `UNKNOWN`: Insufficient session telemetry (strictly defaults to `ALLOW`)
+
+### Behavioral Features (27 Dimensions)
+
+- **Velocity:** `payment_attempts_last_1m`, `payment_attempts_last_5m`, `payment_failures_last_1m`, `payment_failures_last_5m`, `events_per_second`
+- **Retry Behavior:** `retry_count`, `avg_retry_interval_s`, `min_retry_interval_s`, `rapid_retry_ratio`
+- **Payment Variation:** `unique_instrument_count`, `amount_variance`, `amount_change_ratio`
+- **Identity & Infrastructure:** `accounts_on_device`, `devices_on_account`, `accounts_on_ip`, `ips_on_account`, `device_change_count`, `ip_change_count`
+- **Session Behavior:** `session_duration_s`, `checkout_to_payment_s`, `failed_to_success_ratio`, `event_interval_stddev`
+- **Historical Context:** `historical_txn_count`, `historical_failure_rate`, `historical_payment_velocity`, `historical_device_count`, `historical_ip_count`
+
+### Endpoints
+
+- `POST /risk/evaluate-session` — evaluate session events for real-time risk & intent
+- `GET /risk/assessments/{session_id}` — retrieve stored firewall assessments
+
+### Synthetic Environment & Evaluation CLI
+
+```powershell
+# Generate synthetic dataset (13 scenarios: 5 card testing variants, ATO, bots, shared device/IP, retries)
+python -m app.synthetic generate --sessions 1000 --seed 42
+
+# Evaluate firewall performance
+python -m app.synthetic evaluate --sessions 1000 --seed 42
+
+# Run Session-Only vs Lifecycle-Aware Ablation
+python -m app.synthetic ablation --sessions 1000 --seed 42
+```
+
+*Note: The dataset is synthetic and used solely for behavioral intelligence validation. It does not represent Razorpay proprietary data.*
+
+### Measured Evaluation Performance (988 synthetic sessions)
+
+- **Precision:** 88.89%
+- **Recall:** 88.89%
+- **F1 Score:** 88.89%
+- **Execution Latency:** P50 = 0.35ms, P95 = 0.69ms, P99 = 1.09ms (Measured on local runtime)
+
 ## Upgrade paths
 
 Auth on webhook · async webhook mode with job queue · Alembic migrations · per-node model diversity ·
-win-probability calibration from historical outcomes · ML fraud firewall · graph analytics.
+win-probability calibration from historical outcomes · ML fraud calibration · Phase 3 graph analytics.
+

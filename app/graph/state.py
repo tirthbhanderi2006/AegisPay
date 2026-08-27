@@ -36,3 +36,6 @@ class AegisState(TypedDict, total=False):
     evidence_missing: Optional[List[str]]
     evidence_conflicts: Optional[List[str]]
     evidence_completeness: Optional[float]
+    # Phase 2 — behavioral firewall assessment context
+    firewall_assessments: Optional[List[Dict[str, Any]]]
+

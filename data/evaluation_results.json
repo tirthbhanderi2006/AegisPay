@@ -1,0 +1,202 @@
+{
+  "session_only": {
+    "mode": "session_only",
+    "sessions": 988,
+    "seed": 42,
+    "overall": {
+      "precision": 0.8889,
+      "recall": 0.8889,
+      "f1": 0.8889,
+      "detection_rate": 0.8889,
+      "false_positive_rate": 0.25,
+      "true_positives": 608,
+      "false_positives": 76,
+      "true_negatives": 228,
+      "false_negatives": 76
+    },
+    "per_scenario": {
+      "ACCOUNT_TAKEOVER_LIKE": {
+        "count": 76,
+        "intent_accuracy": 0.9079,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.3858
+      },
+      "AUTOMATED_CHECKOUT": {
+        "count": 76,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.4601
+      },
+      "CARD_TESTING": {
+        "count": 380,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 0.4,
+        "avg_risk_score": 0.6957
+      },
+      "DISTRIBUTED_SUSPICIOUS_BEHAVIOR": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.9594
+      },
+      "LEGITIMATE_RETRY_BEHAVIOR": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.0593
+      },
+      "LEGITIMATE_SHARED_DEVICE": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.1209
+      },
+      "LEGITIMATE_SHARED_IP": {
+        "count": 76,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.3563
+      },
+      "LOW_AND_SLOW_AUTOMATION": {
+        "count": 76,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.354
+      },
+      "NORMAL": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.0441
+      }
+    },
+    "confusion_matrix": {
+      "AUTOMATED_CHECKOUT": {
+        "CARD_TESTING": 76
+      },
+      "ACCOUNT_TAKEOVER_LIKE": {
+        "ACCOUNT_TAKEOVER_LIKE": 69,
+        "CARD_TESTING": 7
+      },
+      "NORMAL": {
+        "NORMAL": 228,
+        "ACCOUNT_TAKEOVER_LIKE": 76
+      },
+      "CARD_TESTING": {
+        "CARD_TESTING": 456
+      },
+      "SUSPICIOUS_VELOCITY": {
+        "NORMAL": 76
+      }
+    },
+    "latency": {
+      "p50_ms": 0.346,
+      "p95_ms": 0.694,
+      "p99_ms": 1.086,
+      "mean_ms": 0.382
+    }
+  },
+  "lifecycle_aware": {
+    "mode": "lifecycle_aware",
+    "sessions": 988,
+    "seed": 42,
+    "overall": {
+      "precision": 0.8889,
+      "recall": 0.8889,
+      "f1": 0.8889,
+      "detection_rate": 0.8889,
+      "false_positive_rate": 0.25,
+      "true_positives": 608,
+      "false_positives": 76,
+      "true_negatives": 228,
+      "false_negatives": 76
+    },
+    "per_scenario": {
+      "ACCOUNT_TAKEOVER_LIKE": {
+        "count": 76,
+        "intent_accuracy": 0.9079,
+        "action_accuracy": 0.0132,
+        "avg_risk_score": 0.3928
+      },
+      "AUTOMATED_CHECKOUT": {
+        "count": 76,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.4601
+      },
+      "CARD_TESTING": {
+        "count": 380,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 0.4,
+        "avg_risk_score": 0.6957
+      },
+      "DISTRIBUTED_SUSPICIOUS_BEHAVIOR": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.9594
+      },
+      "LEGITIMATE_RETRY_BEHAVIOR": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.0593
+      },
+      "LEGITIMATE_SHARED_DEVICE": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.1209
+      },
+      "LEGITIMATE_SHARED_IP": {
+        "count": 76,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 0.0,
+        "avg_risk_score": 0.3563
+      },
+      "LOW_AND_SLOW_AUTOMATION": {
+        "count": 76,
+        "intent_accuracy": 0.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.354
+      },
+      "NORMAL": {
+        "count": 76,
+        "intent_accuracy": 1.0,
+        "action_accuracy": 1.0,
+        "avg_risk_score": 0.0441
+      }
+    },
+    "confusion_matrix": {
+      "AUTOMATED_CHECKOUT": {
+        "CARD_TESTING": 76
+      },
+      "ACCOUNT_TAKEOVER_LIKE": {
+        "ACCOUNT_TAKEOVER_LIKE": 69,
+        "CARD_TESTING": 7
+      },
+      "NORMAL": {
+        "NORMAL": 228,
+        "ACCOUNT_TAKEOVER_LIKE": 76
+      },
+      "CARD_TESTING": {
+        "CARD_TESTING": 456
+      },
+      "SUSPICIOUS_VELOCITY": {
+        "NORMAL": 76
+      }
+    },
+    "latency": {
+      "p50_ms": 0.428,
+      "p95_ms": 0.848,
+      "p99_ms": 1.128,
+      "mean_ms": 0.47
+    }
+  },
+  "comparison": {
+    "precision_delta": 0.0,
+    "recall_delta": 0.0,
+    "f1_delta": 0.0,
+    "fpr_delta": 0.0
+  }
+}

@@ -95,19 +95,30 @@ docker-compose.yml        postgres:16-alpine service "db" (aegis/aegis/aegispay 
 app/
 ├── config.py             Settings dataclass (env-driven)
 ├── db.py                 psycopg3 repository (init_schema, save/get/list disputes)
-├── lifecycle_repo.py     [Phase 1] psycopg3 lifecycle repository (transactions, payment_events, evidence_records)
-├── main.py               FastAPI app factory + /health
+├── lifecycle_repo.py     psycopg3 repository (transactions, payment_events, evidence_records, firewall_assessments)
+├── main.py               FastAPI app factory + /health (v0.3.0)
 ├── cli.py                python -m app.cli --fixture data/fixtures/x.json [--no-db]
 ├── models/
 │   ├── dispute.py        Network, ClaimType, TransactionTelemetry, DisputeEvent
 │   ├── engine.py         EvidenceFlags, QualifyingTransaction, RuleEngineResult
 │   ├── outputs.py        DossierDraft, AuditVerdict, MerchantNotice, ClaimClassification, EvidencePoint
-│   └── lifecycle.py      [Phase 1] EventType, PaymentTransaction, PaymentEvent, EvidenceRecord, TransactionReconstruction
+│   ├── lifecycle.py      [Phase 1] EventType (+Phase 2 behavioral types), PaymentTransaction, PaymentEvent, EvidenceRecord
+│   └── firewall.py       [Phase 2] IntentClass, RecommendedAction, RiskSignal, BehavioralFeatures (27 features), FirewallAssessment
 ├── engine/
 │   ├── reason_codes.py   static Visa/Mastercard/NPCI lookup (NPCI illustrative)
 │   ├── ce3_rules.py      deterministic CE3.0 + evidence-flag evaluation
 │   ├── expected_value.py win-prob heuristics + EV routing math
 │   └── reconstruction.py [Phase 1] deterministic transaction reconstruction service (no LLM)
+├── firewall/             [Phase 2] Behavioral Intent Firewall
+│   ├── features.py       27 deterministic features (session-only & lifecycle-aware)
+│   ├── scoring.py        weighted component risk scoring + combination boost
+│   ├── intent.py         multi-condition deterministic intent classification
+│   ├── policy.py         ALLOW / CHALLENGE / BLOCK threshold policy
+│   ├── engine.py         orchestrator with latency benchmarking
+│   └── evaluation.py     per-scenario precision/recall/F1, confusion matrix, ablation runner
+├── synthetic/            [Phase 2] Synthetic payment environment
+│   ├── generator.py      13 scenarios (5 card-testing variants, ATO, bots, shared device/IP, retries)
+│   └── __main__.py       CLI for generate / evaluate / ablation commands
 ├── agents/
 │   ├── llm.py            ChatGroq singleton, JSON extraction, repair retry, Pydantic validation
 │   ├── drafter.py        DefenseDrafterNode  (prompt verbatim from MASTER_PROMPT.md §1)
@@ -115,17 +126,18 @@ app/
 │   ├── settlement.py     AutoSettlementNode (§3)
 │   └── classifier.py     reason-code fallback classifier (§4)
 ├── graph/
-│   ├── state.py          AegisState TypedDict (+ Phase 1 lifecycle fields)
+│   ├── state.py          AegisState TypedDict (+ Phase 1 & 2 lifecycle/firewall fields)
 │   └── workflow.py       StateGraph wiring, enrich_from_lifecycle node, conditional edges, serialize_result()
 ├── api/
 │   ├── routes.py         POST /webhooks/dispute (sync), GET /disputes[/{id}]
-│   └── lifecycle_routes.py [Phase 1] POST /webhooks/payment-event, GET /transactions/{id}/timeline
+│   ├── lifecycle_routes.py [Phase 1] POST /webhooks/payment-event, GET /transactions/{id}/timeline
+│   └── firewall_routes.py  [Phase 2] POST /risk/evaluate-session, GET /risk/assessments/{session_id}
 └── utils/
     ├── masking.py        PII masking pre-LLM
     └── timeutil.py       tolerant ISO-8601 parsing (Z-suffix safe)
 
-data/fixtures/            4 dispute webhooks + 2 lifecycle fixtures (see §8)
-tests/                    unit tests (no LLM/db) + mocked-graph integration + lifecycle tests
+data/fixtures/            4 dispute webhooks + 2 lifecycle fixtures + evaluation_results.json
+tests/                    unit tests (no LLM/db) + mocked-graph integration + lifecycle + firewall + synthetic tests (104 total)
 ```
 
 ## 6. Work Log / Status
@@ -146,6 +158,20 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration + li
 | 12 | Live Groq smoke tests — all 4 fixtures verified end-to-end + persisted to Postgres | DONE |
 | 13 | **Next.js 14 command dashboard** (`dashboard/`) — 3-panel UI, mock fallback, build green, live-verified vs backend | DONE |
 | 14 | **Phase 1 — Transaction/Evidence Lifecycle Foundation:** domain models (lifecycle.py), normalized DB tables (lifecycle_repo.py), reconstruction service (reconstruction.py), event ingestion API (lifecycle_routes.py), AegisState enrichment (enrich_from_lifecycle node), fixtures ×2, test suite 16 new tests | DONE |
+| 15 | **Phase 2 — Behavioral Intent Firewall:** 27 deterministic features (`features.py`), weighted risk engine + combination boost (`scoring.py`), multi-condition intent classifier (`intent.py`), action policy (`policy.py`), orchestrator (`engine.py`), evaluation & ablation harness (`evaluation.py`), synthetic payment environment (`app/synthetic/`), API endpoints (`firewall_routes.py`), PostgreSQL `firewall_assessments` persistence table, dispute-defense context enrichment, 46 new tests (104 total green) | DONE |
+
+### Phase 2 Evaluation & Benchmark Results (988 synthetic sessions, seed 42)
+| Metric | Overall Value |
+|---|---|
+| Precision | **88.89%** |
+| Recall | **88.89%** |
+| F1 Score | **88.89%** |
+| Detection Rate | **88.89%** |
+| False Positive Rate | **25.00%** (conservative CHALLENGE on office shared-IP traffic) |
+| Latency P50 | **0.35 ms** |
+| Latency P95 | **0.69 ms** |
+| Latency P99 | **1.09 ms** |
+| Total Tests Green | **104 / 104 passed** (1.36s) |
 
 ### Live-run verification results (2026-08-25)
 | Fixture | decision | final_status | iterations | notes |
@@ -183,6 +209,9 @@ tests/                    unit tests (no LLM/db) + mocked-graph integration + li
 - **ADR-011 — LLM fault containment (found via user's live dashboard session):** Groq intermittently returns HTTP 400 `json_validate_failed` with the model's near-valid JSON embedded in `error.failed_generation` (observed: one stray `}` / missing `]`). Fixes: (1) `balance_json_text()` deterministically repairs mismatched/missing closers + unclosed strings; `extract_json_object()` now tries direct → substring → balanced candidates; (2) `_call()` catches ALL non-rate-limit LLM errors, salvages `failed_generation` (via SDK `.body`, regex fallback) and parses it; (3) route-level guard in `/webhooks/dispute` converts any pipeline exception into a safe ESCALATED human-review result — **HTTP 500s are now impossible**. Verified in production: a TPM-exhausted run degraded to the honest "Insufficient" draft → auditor rejected 2× → circuit-breaker escalation (no crash); immediate retry passed iter-1 @ 0.96. Regression coverage: `tests/test_llm_json.py` (10 tests; suite total 42).
 - **ADR-010 — Dashboard stack & decisions:** Next.js 14.2.35 (14.2.32 flagged by security advisory) + React 18 + Tailwind 3 + lucide-react only (hand-rolled primitives, no Radix dep). System font stacks instead of Google Fonts (no build-time network fetch). Amounts cache seeded from fixtures because `GET /disputes` list rows omit `amount` — metrics sum known amounts. Ops-decision buttons on escalation card are client-side demo state (backend has no such endpoint yet — listed as upgrade path).
 - **ADR-012 — Phase 1 lifecycle persistence layer.** Three normalized tables (`transactions`, `payment_events`, `evidence_records`) added alongside existing `disputes` table; no JSONB blobs for lifecycle data. `LifecycleRepository` follows same thread-safe pattern as `DisputeRepository`. `enrich_from_lifecycle` node is inserted as the first node in the LangGraph workflow (`START → enrich → parse_dispute → ...`); returns empty dict when no lifecycle data exists, preserving all existing behavior. Reconstruction service is pure deterministic (no LLM). Event ingestion endpoint enforces `event_id` idempotency via primary key constraint. All 42 original tests still pass; 16 new lifecycle tests added (58 total).
+- **ADR-013 — Phase 2 Behavioral Intent Firewall Architecture.** Real-time pre/intra-payment risk intelligence system. Purely deterministic feature extraction and scoring: **NO ML model, NO LLM** in the firewall evaluation path. Produces `risk_score` [0.0, 1.0], `intent` (`NORMAL`, `CARD_TESTING`, `AUTOMATED_CHECKOUT`, `ACCOUNT_TAKEOVER_LIKE`, `SUSPICIOUS_VELOCITY`, `UNKNOWN`), `action` (`ALLOW`, `CHALLENGE`, `BLOCK`), and structured `signals` with severity tags. Firewall assessments are stored in `firewall_assessments` table and linked to future disputes strictly as contextual data — they never alter deterministic dispute-defense math.
+- **ADR-014 — Synthetic Dataset Methodology & Adversarial Variations.** To rigorously validate behavioral intelligence without proprietary gateway data, `app.synthetic.generator` deterministically produces 13 scenarios across 9 core classes (including 5 adversarial card-testing variations: rapid attempts, slow attempts, varying amounts, rotating devices, rotating IPs). Includes edge cases for family shared devices, office shared IPs, and legitimate network retries to evaluate false positive rates.
+- **ADR-015 — Multi-Signal Combination Boost Scoring.** Rather than single-threshold rules (e.g. "5 failures = block"), scoring uses 6 weighted component groups (`W_VELOCITY=0.25`, `W_RETRY=0.20`, `W_INFRASTRUCTURE=0.20`, `W_VARIATION=0.15`, `W_HISTORICAL=0.10`, `W_SEQUENCE=0.10`) coupled with a multi-signal combination multiplier (1.5x for 2 firing components, 2.0x for 3, 2.5x for 4+). This operationalizes the core insight: high velocity alone may be legitimate, but high velocity combined with failure rates and instrument cycling is malicious.
 
 ## 8. Fixture Scenarios (`data/fixtures/`)
 

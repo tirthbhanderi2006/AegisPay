@@ -72,6 +72,34 @@ _EVIDENCE_RECORDS_IDX = """
 CREATE INDEX IF NOT EXISTS idx_evidence_records_txn ON evidence_records(transaction_id);
 """
 
+# Phase 2 — firewall assessments
+_FIREWALL_ASSESSMENTS_DDL = """
+CREATE TABLE IF NOT EXISTS firewall_assessments (
+    assessment_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    transaction_id TEXT,
+    merchant_id TEXT NOT NULL,
+    risk_score DOUBLE PRECISION NOT NULL,
+    intent TEXT NOT NULL,
+    action TEXT NOT NULL,
+    signals JSONB NOT NULL DEFAULT '[]',
+    features JSONB NOT NULL DEFAULT '{}',
+    missing_data JSONB NOT NULL DEFAULT '[]',
+    policy_version TEXT NOT NULL,
+    engine_version TEXT NOT NULL,
+    latency_ms DOUBLE PRECISION,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+_FIREWALL_ASSESSMENTS_IDX_SESSION = """
+CREATE INDEX IF NOT EXISTS idx_fw_session ON firewall_assessments(session_id);
+"""
+
+_FIREWALL_ASSESSMENTS_IDX_TXN = """
+CREATE INDEX IF NOT EXISTS idx_fw_txn ON firewall_assessments(transaction_id);
+"""
+
 # ---------------------------------------------------------------------------
 # DML
 # ---------------------------------------------------------------------------
@@ -126,6 +154,10 @@ class LifecycleRepository:
                 conn.execute(_PAYMENT_EVENTS_IDX)
                 conn.execute(_EVIDENCE_RECORDS_DDL)
                 conn.execute(_EVIDENCE_RECORDS_IDX)
+                # Phase 2 — firewall assessments
+                conn.execute(_FIREWALL_ASSESSMENTS_DDL)
+                conn.execute(_FIREWALL_ASSESSMENTS_IDX_SESSION)
+                conn.execute(_FIREWALL_ASSESSMENTS_IDX_TXN)
                 conn.commit()
             return True
         except psycopg.OperationalError as exc:
@@ -277,6 +309,74 @@ class LifecycleRepository:
             return [dict(r) for r in rows]
         except psycopg.Error as exc:
             logger.error("Failed to list evidence for txn %s: %s", transaction_id, exc)
+            return []
+
+    # ---- firewall assessments (Phase 2) ----
+
+    def save_assessment(
+        self,
+        assessment_id: str,
+        session_id: str,
+        merchant_id: str,
+        risk_score: float,
+        intent: str,
+        action: str,
+        signals: Any = None,
+        features: Any = None,
+        missing_data: Any = None,
+        policy_version: str = "",
+        engine_version: str = "",
+        latency_ms: float = 0.0,
+        transaction_id: Optional[str] = None,
+    ) -> bool:
+        try:
+            with self._lock, self._connect() as conn:
+                conn.execute(
+                    """INSERT INTO firewall_assessments (
+                        assessment_id, session_id, transaction_id, merchant_id,
+                        risk_score, intent, action, signals, features,
+                        missing_data, policy_version, engine_version, latency_ms
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s,%s)""",
+                    (
+                        assessment_id, session_id, transaction_id, merchant_id,
+                        risk_score, intent, action,
+                        json.dumps(signals or []),
+                        json.dumps(features or {}),
+                        json.dumps(missing_data or []),
+                        policy_version, engine_version, latency_ms,
+                    ),
+                )
+                conn.commit()
+            return True
+        except psycopg.errors.UniqueViolation:
+            logger.info("Duplicate assessment_id %s ignored.", assessment_id)
+            return False
+        except psycopg.Error as exc:
+            logger.error("Failed to save assessment %s: %s", assessment_id, exc)
+            return False
+
+    def get_assessments_for_session(self, session_id: str) -> List[Dict[str, Any]]:
+        try:
+            with self._lock, self._connect() as conn:
+                rows = conn.execute(
+                    "SELECT * FROM firewall_assessments WHERE session_id = %s ORDER BY created_at DESC",
+                    (session_id,),
+                ).fetchall()
+            return [dict(r) for r in rows]
+        except psycopg.Error as exc:
+            logger.error("Failed to list assessments for session %s: %s", session_id, exc)
+            return []
+
+    def get_assessments_for_transaction(self, transaction_id: str) -> List[Dict[str, Any]]:
+        try:
+            with self._lock, self._connect() as conn:
+                rows = conn.execute(
+                    "SELECT * FROM firewall_assessments WHERE transaction_id = %s ORDER BY created_at DESC",
+                    (transaction_id,),
+                ).fetchall()
+            return [dict(r) for r in rows]
+        except psycopg.Error as exc:
+            logger.error("Failed to list assessments for txn %s: %s", transaction_id, exc)
             return []
 
 
