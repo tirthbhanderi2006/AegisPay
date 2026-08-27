@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class EventType(str, Enum):
     """Canonical lifecycle event types."""
+    # Phase 1 — lifecycle events
     CHECKOUT_STARTED = "CHECKOUT_STARTED"
     AUTHENTICATION_COMPLETED = "AUTHENTICATION_COMPLETED"
     PAYMENT_AUTHORIZED = "PAYMENT_AUTHORIZED"
@@ -28,6 +29,15 @@ class EventType(str, Enum):
     DELIVERED = "DELIVERED"
     DISPUTE_OPENED = "DISPUTE_OPENED"
     EVIDENCE_SUBMITTED = "EVIDENCE_SUBMITTED"
+    # Phase 2 — behavioral firewall events
+    SESSION_STARTED = "SESSION_STARTED"
+    CHECKOUT_VIEWED = "CHECKOUT_VIEWED"
+    PAYMENT_METHOD_SELECTED = "PAYMENT_METHOD_SELECTED"
+    PAYMENT_ATTEMPTED = "PAYMENT_ATTEMPTED"
+    PAYMENT_FAILED = "PAYMENT_FAILED"
+    PAYMENT_SUCCEEDED = "PAYMENT_SUCCEEDED"
+    PAYMENT_RETRIED = "PAYMENT_RETRIED"
+    SESSION_ENDED = "SESSION_ENDED"
 
 
 # Canonical ordering used for reconstruction / completeness scoring.
