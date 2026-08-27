@@ -381,3 +381,4 @@ class LifecycleRepository:
 
 
 lifecycle_repository = LifecycleRepository()
+lifecycle_repo = lifecycle_repository

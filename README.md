@@ -286,10 +286,102 @@ python -m app.monitoring.cli drift
 | **Hindsight Leakage Detected** | False | **False** | 100% temporal cutoff enforcement |
 | **P50 / P95 / P99 Latency** | 0.18 / 0.25 / 0.31 ms | **0.18 / 0.25 / 0.31 ms** | Local benchmark execution time |
 
+### Phase 5: Production Integration & Merchant Operations Layer
+
+```
+Merchant Backend
+      |
+      | POST /v1/risk/evaluate
+      | Header: X-API-Key: ak_live_...
+      | Header: Idempotency-Key: idem_...
+      v
++-------------------------------------------------------------+
+| AegisPay Risk Operations Engine                             |
+|                                                             |
+| 1. API Key Auth & Rate Limiting (Token Bucket)              |
+| 2. Multi-Tenant Merchant Ownership Verification             |
+| 3. Idempotency Cache Check (SHA-256 Hash Matching)          |
+| 4. Temporal Multi-Currency Normalization (Point-in-Time FX) |
+| 5. Behavioral Firewall & Cross-Merchant Entity Intelligence |
+| 6. Calibrated Scoring & Conservative Policy Action          |
+| 7. Immutable Audit Snapshot (SHA-256 Decision Hash)         |
++------------------------------+------------------------------+
+                               |
+                               +-----------------------+
+                               |                       |
+                               v                       v
+                         API Response           Signed Webhook
+                      ALLOW / CHALLENGE /    (HMAC-SHA256 Signature
+                         BLOCK / HOLD         5-min Replay Window)
+```
+
+#### Example Merchant Evaluation Request (`curl`)
+```bash
+curl -X POST http://127.0.0.1:8000/v1/risk/evaluate \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ak_test_sandbox_123" \
+  -H "Idempotency-Key: idem_txn_1001" \
+  -d '{
+    "transaction_id": "txn_1001",
+    "merchant_id": "m_sandbox",
+    "amount": 8300.00,
+    "currency": "INR",
+    "account_token": "acct_hash_9918",
+    "device_token": "dev_hash_iphone14_ab71",
+    "ip_token": "ip_hash_103_21_244_0",
+    "payment_instrument_token": "pi_tok_visa_4111",
+    "timestamp": "2026-08-27T10:00:00Z"
+  }'
+```
+
+#### Example Decision Response
+```json
+{
+  "transaction_id": "txn_1001",
+  "decision_id": "dec_txn_1001_1787823879",
+  "decision": "CHALLENGE",
+  "risk_score": 0.5842,
+  "risk_level": "MEDIUM",
+  "evidence_quality": 0.85,
+  "signals": [
+    {
+      "name": "payment_velocity",
+      "severity": "HIGH",
+      "value": 4,
+      "contribution": 0.28,
+      "description": "Rapid payment attempts within short interval"
+    }
+  ],
+  "explanation": [
+    "Moderate behavioral deviation observed. Step-up authentication required."
+  ],
+  "versions": {
+    "calibration": "calibration-v1.0",
+    "policy": "policy-v2.0",
+    "graph_snapshot": "graph-live"
+  },
+  "audit": {
+    "snapshot_id": "snap_txn_1001",
+    "decision_hash": "a4f891b2c3d4e5f6...",
+    "recorded": true
+  },
+  "calibration_version": "calibration-v1.0",
+  "request_id": "req_8819ab01",
+  "latency_ms": 3.92
+}
+```
+
+#### Standalone External Merchant Client
+Run the executable client demonstrating pure HTTP interaction with zero internal AegisPay imports:
+```powershell
+.\.venv\Scripts\python.exe examples/merchant_client.py
+```
+
 ## Upgrade paths
 
 Auth on webhook · async webhook mode with job queue · Alembic migrations · per-node model diversity ·
 win-probability calibration from historical outcomes · Neo4j / Graph DB migration for 100M+ nodes.
+
 
 
 

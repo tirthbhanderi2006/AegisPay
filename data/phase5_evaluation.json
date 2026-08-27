@@ -1,0 +1,17 @@
+{
+  "samples_evaluated": 500,
+  "decisions": {
+    "ALLOW": 0,
+    "CHALLENGE": 500,
+    "BLOCK": 0,
+    "MANUAL_HOLD": 0
+  },
+  "latency_percentiles_ms": {
+    "p50": 3.918,
+    "p95": 4.959,
+    "p99": 5.69
+  },
+  "idempotency_verified": true,
+  "privacy_boundary_enforced": true,
+  "merchant_isolation_enforced": true
+}
