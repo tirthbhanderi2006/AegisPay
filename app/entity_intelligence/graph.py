@@ -269,3 +269,6 @@ class EntityGraph:
             nodes=nodes_list,
             edges=edges_list,
         )
+
+
+entity_graph = EntityGraph()
