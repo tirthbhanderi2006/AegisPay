@@ -15,7 +15,16 @@ from typing import Any, Dict, List, Optional
 from app.firewall.features import extract_lifecycle_aware, extract_session_only
 from app.firewall.intent import classify_intent
 from app.firewall.policy import POLICY_VERSION, decide_action
-from app.firewall.scoring import ENGINE_VERSION, compute_risk_score
+from app.firewall.scoring import (
+    ENGINE_VERSION,
+    compute_risk_score,
+    velocity_component,
+    retry_component,
+    variation_component,
+    infrastructure_component,
+    historical_deviation_component,
+    sequence_component,
+)
 from app.models.firewall import (
     FirewallAssessment,
     RecommendedAction,
@@ -29,11 +38,12 @@ def evaluate_session(
     request: SessionEvaluationRequest,
     historical_events: Optional[List[Dict[str, Any]]] = None,
     cross_merchant_graph: Optional[Any] = None,
+    calibration_config: Optional[Any] = None,
+    record_audit: bool = True,
 ) -> FirewallAssessment:
     """Run the full firewall evaluation pipeline.
 
-    Returns a ``FirewallAssessment`` with risk_score, intent, action,
-    signals, and latency measurement.
+    Supports Phase 4 calibration, multi-currency normalization, and audit snapshots.
     """
     start = time.perf_counter()
 
@@ -48,6 +58,21 @@ def evaluate_session(
             ev["ip_address"] = request.ip_address
         if not ev.get("account_id") and request.account_id:
             ev["account_id"] = request.account_id
+
+    # --- Phase 4 Multi-Currency Normalization ---
+    from app.currency.converter import currency_converter
+    fx_penalty = 0.0
+    fx_rate_version = "identity"
+    for ev in session_events:
+        curr = ev.get("currency")
+        amt = ev.get("amount")
+        if curr and amt and curr != "USD":
+            ts = ev.get("timestamp")
+            norm_res = currency_converter.normalize_amount(float(amt), curr, as_of=ts)
+            ev["amount"] = norm_res.normalized_amount
+            fx_rate_version = norm_res.fx_rate_version
+            if norm_res.evidence_quality_penalty > 0:
+                fx_penalty = max(fx_penalty, norm_res.evidence_quality_penalty)
 
     # --- Feature extraction ---
     missing_data: List[str] = []
@@ -81,10 +106,14 @@ def evaluate_session(
         quality_score += 0.15
     if historical_events and len(historical_events) > 0:
         quality_score += 0.30
-    evidence_quality = round(min(1.0, quality_score), 2)
 
-    # --- Base Behavioral Scoring ---
-    risk_score, signals, feature_contributions = compute_risk_score(features)
+    quality_score -= fx_penalty
+    evidence_quality = round(max(0.0, min(1.0, quality_score)), 2)
+
+    # --- Base Behavioral Scoring (Supports Calibrated Config) ---
+    risk_score, signals, feature_contributions = compute_risk_score(
+        features, calibration_config=calibration_config
+    )
 
     # --- Cross-Merchant Intelligence Integration ---
     if cross_merchant_graph:
@@ -130,13 +159,69 @@ def evaluate_session(
     intent, _reasons = classify_intent(features)
 
     # --- Conservative Action policy ---
-    action = decide_action(risk_score, intent)
+    thresh_config = getattr(calibration_config, "thresholds", None)
+    low_thresh = thresh_config.low_threshold if thresh_config else 0.30
+    high_thresh = thresh_config.high_threshold if thresh_config else 0.70
+    eq_thresh = thresh_config.evidence_quality_threshold if thresh_config else 0.70
+
+    action = decide_action(risk_score, intent, low_threshold=low_thresh, high_threshold=high_thresh)
     # Conservative policy rule: if high risk is solely driven by cross-merchant graph but evidence quality is low,
     # downgrade BLOCK to CHALLENGE (never blind block on weak evidence)
-    if action == RecommendedAction.BLOCK and evidence_quality < 0.70 and risk_score < 0.85:
+    if action == RecommendedAction.BLOCK and evidence_quality < eq_thresh and risk_score < 0.85:
         action = RecommendedAction.CHALLENGE
 
     elapsed_ms = (time.perf_counter() - start) * 1000.0
+
+    # --- Phase 4 Immutable Decision Audit Snapshot ---
+    if record_audit:
+        from app.audit.models import RiskDecisionSnapshot
+        from app.audit.repository import audit_repo
+        from app.calibration.models import FEATURE_SCHEMA_VERSION
+
+        txn_id = request.transaction_id or f"txn_{request.session_id}"
+        cal_ver = getattr(calibration_config, "version", "calibration-heuristic-v1.0")
+        cal_hash = getattr(calibration_config, "config_hash", "default_hash")
+        thresh_ver = getattr(thresh_config, "version", "thresh-default-v1.0")
+
+        v_s, _ = velocity_component(features)
+        r_s, _ = retry_component(features)
+        var_s, _ = variation_component(features)
+        i_s, _ = infrastructure_component(features)
+        h_s, _ = historical_deviation_component(features)
+        s_s, _ = sequence_component(features)
+        dev_n = min(1.0, features.accounts_on_device / 5.0)
+        fail_n = min(1.0, features.historical_failure_rate)
+
+        snapshot = RiskDecisionSnapshot(
+            transaction_id=txn_id,
+            session_id=request.session_id,
+            merchant_id=request.merchant_id,
+            timestamp=session_events[-1].get("timestamp", "1970-01-01T00:00:00Z") if session_events else "1970-01-01T00:00:00Z",
+            feature_values={
+                "velocity_score": v_s,
+                "retry_frequency_score": r_s,
+                "infrastructure_risk_score": i_s,
+                "variation_anomaly_score": var_s,
+                "historical_deviation_score": h_s,
+                "sequence_anomaly_score": s_s,
+                "device_reuse_rate": dev_n,
+                "ip_failure_rate": fail_n,
+                "cross_merchant_propagated_risk": 0.0,
+                "historical_failure_rate": fail_n,
+            },
+            feature_contributions=feature_contributions,
+            signals=[s.model_dump() if hasattr(s, "model_dump") else s for s in signals],
+            graph_snapshot_version="graph-live",
+            calibration_version=cal_ver,
+            calibration_hash=cal_hash,
+            threshold_version=thresh_ver,
+            fx_rate_version=fx_rate_version,
+            feature_schema_version=FEATURE_SCHEMA_VERSION,
+            evidence_quality=evidence_quality,
+            final_score=risk_score,
+            final_action=action,
+        )
+        audit_repo.save_snapshot(snapshot)
 
     return FirewallAssessment(
         session_id=request.session_id,
@@ -164,6 +249,7 @@ def evaluate_session_from_dicts(
     ip_address: Optional[str] = None,
     account_id: Optional[str] = None,
     cross_merchant_graph: Optional[Any] = None,
+    calibration_config: Optional[Any] = None,
 ) -> FirewallAssessment:
     """Convenience wrapper that accepts raw dicts instead of Pydantic models.
 
@@ -178,12 +264,13 @@ def evaluate_session_from_dicts(
             event_type=ev.get("event_type", ""),
             timestamp=ev.get("timestamp", ""),
             metadata=ev.get("metadata", {}),
-            device_hash=ev.get("device_hash", device_hash),
-            ip_address=ev.get("ip_address", ip_address),
             amount=ev.get("amount"),
-            currency=ev.get("currency", "USD"),
+            currency=ev.get("currency") or "USD",
+            payment_method=ev.get("payment_method"),
+            device_hash=ev.get("device_hash") or device_hash,
+            ip_address=ev.get("ip_address") or ip_address,
             payment_instrument_token=ev.get("payment_instrument_token"),
-            account_id=ev.get("account_id", account_id),
+            account_id=ev.get("account_id") or account_id,
         ))
 
     request = SessionEvaluationRequest(
@@ -194,4 +281,9 @@ def evaluate_session_from_dicts(
         ip_address=ip_address,
         account_id=account_id,
     )
-    return evaluate_session(request, historical_events=historical_events, cross_merchant_graph=cross_merchant_graph)
+    return evaluate_session(
+        request,
+        historical_events=historical_events,
+        cross_merchant_graph=cross_merchant_graph,
+        calibration_config=calibration_config,
+    )

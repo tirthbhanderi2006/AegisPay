@@ -51,6 +51,7 @@ def _evt(
     acc: str,
     amount: float = 100.0,
     session: str = "sess_0",
+    currency: str = "USD",
 ) -> Dict[str, Any]:
     return {
         "event_id": event_id,
@@ -61,6 +62,7 @@ def _evt(
         "ip_address": ip,
         "account_id": acc,
         "amount": amount,
+        "currency": currency,
         "session_id": session,
         "metadata": {
             "merchant_id": merchant,
@@ -68,6 +70,7 @@ def _evt(
             "ip_address": ip,
             "account_id": acc,
             "amount": amount,
+            "currency": currency,
         },
     }
 
@@ -448,6 +451,82 @@ def gen_isolated_normal_user(rng: random.Random, idx: int) -> Dict[str, Any]:
     }
 
 
+def gen_multi_currency_fraud(rng: random.Random, idx: int) -> Dict[str, Any]:
+    """Cross-border fraud attacker converting currency (INR, EUR, GBP) to evade amount filters."""
+    dev = f"dev_currfraud_{idx:04d}"
+    ip = f"198.51.100.{(idx * 31) % 250 + 1}"
+    target_merch = f"merch_target_{idx:04d}"
+    target_acc = f"acc_currfraud_{idx:04d}"
+    target_sess = f"sess_currfraud_target_{idx}"
+
+    current_session = [
+        _evt(f"cf_{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), target_merch, dev, ip, target_acc, session=target_sess),
+        _evt(f"cf_{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 30), target_merch, dev, ip, target_acc, session=target_sess),
+        _evt(f"cf_{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 60), target_merch, dev, ip, target_acc, amount=8350.0, session=target_sess, currency="INR"),
+        _evt(f"cf_{idx}_e3", "PAYMENT_FAILED", _ts(_BASE_TIME, 65), target_merch, dev, ip, target_acc, amount=8350.0, session=target_sess, currency="INR"),
+    ]
+
+    history = []
+    currencies = ["EUR", "GBP", "AED"]
+    for m_i, curr in enumerate(currencies, 1):
+        h_merch = f"merch_cf_{m_i}_{idx:04d}"
+        h_acc = f"acc_cf_victim_{m_i}_{idx:04d}"
+        h_sess = f"sess_cf_h_{m_i}_{idx}"
+        h_time = _BASE_TIME - timedelta(hours=m_i * 3)
+        history.extend([
+            _evt(f"hcf_{idx}_{m_i}_1", "PAYMENT_ATTEMPTED", _ts(h_time, 0), h_merch, dev, ip, h_acc, amount=120.0, session=h_sess, currency=curr),
+            _evt(f"hcf_{idx}_{m_i}_2", "PAYMENT_FAILED", _ts(h_time, 5), h_merch, dev, ip, h_acc, session=h_sess, currency=curr),
+        ])
+
+    return {
+        "scenario_id": f"multi_currency_fraud_{idx}",
+        "label": "MULTI_CURRENCY_FRAUD",
+        "target_merchant_id": target_merch,
+        "target_entity_id": dev,
+        "current_session": current_session,
+        "cross_merchant_history": history,
+        "expected_local_action": RecommendedAction.ALLOW,
+        "expected_cross_action": RecommendedAction.BLOCK,
+    }
+
+
+def gen_high_degree_benign_node(rng: random.Random, idx: int) -> Dict[str, Any]:
+    """High degree popular merchant hub with 100% success rate."""
+    hub_merch = f"merch_superstore_{idx:04d}"
+    target_dev = f"dev_shopper_{idx:04d}"
+    target_acc = f"acc_shopper_{idx:04d}"
+    target_sess = f"sess_hub_target_{idx}"
+    ip = f"192.0.2.{(idx * 7) % 250 + 1}"
+
+    current_session = [
+        _evt(f"hub_{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), hub_merch, target_dev, ip, target_acc, session=target_sess),
+        _evt(f"hub_{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 45), hub_merch, target_dev, ip, target_acc, session=target_sess),
+        _evt(f"hub_{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 90), hub_merch, target_dev, ip, target_acc, amount=50.0, session=target_sess),
+        _evt(f"hub_{idx}_e3", "PAYMENT_SUCCEEDED", _ts(_BASE_TIME, 95), hub_merch, target_dev, ip, target_acc, amount=50.0, session=target_sess),
+    ]
+
+    history = []
+    for u_i in range(1, 15):
+        h_dev = f"dev_hub_user_{u_i}_{idx:04d}"
+        h_acc = f"acc_hub_user_{u_i}_{idx:04d}"
+        h_sess = f"sess_hub_h_{u_i}_{idx}"
+        h_time = _BASE_TIME - timedelta(hours=u_i * 2)
+        history.extend([
+            _evt(f"hhub_{idx}_{u_i}_1", "PAYMENT_ATTEMPTED", _ts(h_time, 0), hub_merch, h_dev, ip, h_acc, amount=40.0, session=h_sess),
+            _evt(f"hhub_{idx}_{u_i}_2", "PAYMENT_SUCCEEDED", _ts(h_time, 5), hub_merch, h_dev, ip, h_acc, session=h_sess),
+        ])
+
+    return {
+        "scenario_id": f"high_degree_benign_{idx}",
+        "label": "HIGH_DEGREE_BENIGN_NODE",
+        "target_merchant_id": hub_merch,
+        "target_entity_id": hub_merch,
+        "current_session": current_session,
+        "cross_merchant_history": history,
+        "expected_local_action": RecommendedAction.ALLOW,
+        "expected_cross_action": RecommendedAction.ALLOW,
+    }
+
 
 SCENARIO_GENERATORS = [
     gen_device_reuse_ring,
@@ -460,21 +539,26 @@ SCENARIO_GENERATORS = [
     gen_legitimate_family_device,
     gen_legitimate_mobile_network,
     gen_isolated_normal_user,
+    gen_multi_currency_fraud,
+    gen_high_degree_benign_node,
 ]
 
 
 def generate_cross_merchant_dataset(
-    total_samples: int = 500,
+    sample_count: int = 500,
     seed: int = 42,
+    total_samples: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
-    """Generate deterministic cross-merchant dataset across all 10 scenarios."""
+    """Generate deterministic cross-merchant dataset across all scenarios."""
+    count = total_samples if total_samples is not None else sample_count
     rng = random.Random(seed)
     dataset: List[Dict[str, Any]] = []
     n_gens = len(SCENARIO_GENERATORS)
 
-    for i in range(total_samples):
+    for i in range(count):
         gen_fn = SCENARIO_GENERATORS[i % n_gens]
         sample = gen_fn(rng, i // n_gens)
         dataset.append(sample)
 
     return dataset
+

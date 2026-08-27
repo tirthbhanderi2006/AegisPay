@@ -1,0 +1,127 @@
+{
+  "calibration": {
+    "heuristic": {
+      "sample_count": 100,
+      "precision": 0.6304,
+      "recall": 1.0,
+      "f1": 0.7733,
+      "fpr": 0.8095,
+      "fnr": 0.0,
+      "roc_auc": 0.8227,
+      "pr_auc": 0.8921,
+      "brier_score": 0.189136,
+      "expected_calibration_error": 0.195861,
+      "confusion_matrix": {
+        "tp": 58,
+        "fp": 34,
+        "tn": 8,
+        "fn": 0
+      },
+      "decision_distribution": {
+        "ALLOW": 8,
+        "CHALLENGE": 92,
+        "BLOCK": 0
+      }
+    },
+    "calibrated_validation": {
+      "sample_count": 100,
+      "precision": 0.6,
+      "recall": 1.0,
+      "f1": 0.75,
+      "fpr": 1.0,
+      "fnr": 0.0,
+      "roc_auc": 0.82,
+      "pr_auc": 0.8988,
+      "brier_score": 0.215404,
+      "expected_calibration_error": 0.229774,
+      "confusion_matrix": {
+        "tp": 60,
+        "fp": 40,
+        "tn": 0,
+        "fn": 0
+      },
+      "decision_distribution": {
+        "ALLOW": 0,
+        "CHALLENGE": 100,
+        "BLOCK": 0
+      }
+    },
+    "calibrated_test": {
+      "sample_count": 100,
+      "precision": 0.58,
+      "recall": 1.0,
+      "f1": 0.7342,
+      "fpr": 1.0,
+      "fnr": 0.0,
+      "roc_auc": 0.8227,
+      "pr_auc": 0.8921,
+      "brier_score": 0.218344,
+      "expected_calibration_error": 0.257531,
+      "confusion_matrix": {
+        "tp": 58,
+        "fp": 42,
+        "tn": 0,
+        "fn": 0
+      },
+      "decision_distribution": {
+        "ALLOW": 0,
+        "CHALLENGE": 100,
+        "BLOCK": 0
+      }
+    }
+  },
+  "multi_currency": [
+    {
+      "currency": "INR",
+      "original_amount": 8300.0,
+      "normalized_usd": 99.4,
+      "fx_rate_used": 83.5,
+      "fx_version": "fx-2026-06",
+      "is_stale": true
+    },
+    {
+      "currency": "EUR",
+      "original_amount": 100.0,
+      "normalized_usd": 109.89,
+      "fx_rate_used": 0.91,
+      "fx_version": "fx-2026-06",
+      "is_stale": true
+    },
+    {
+      "currency": "GBP",
+      "original_amount": 100.0,
+      "normalized_usd": 128.21,
+      "fx_rate_used": 0.78,
+      "fx_version": "fx-2026-06",
+      "is_stale": true
+    },
+    {
+      "currency": "AED",
+      "original_amount": 100.0,
+      "normalized_usd": 27.25,
+      "fx_rate_used": 3.67,
+      "fx_version": "fx-2026-06",
+      "is_stale": true
+    }
+  ],
+  "replay": {
+    "total_tested": 50,
+    "matches": 50,
+    "deterministic_rate": 1.0
+  },
+  "temporal_integrity": {
+    "as_of_t0": "2026-07-01T10:00:00Z",
+    "as_of_t1": "2026-07-10T10:00:00Z",
+    "risk_score_at_t0": 0.0,
+    "merchants_observed_at_t0": 1,
+    "risk_score_at_t1": 1.0,
+    "merchants_observed_at_t1": 2,
+    "hindsight_leakage_detected": false,
+    "is_temporal_integrity_preserved": true
+  },
+  "latency": {
+    "p50_ms": 0.178,
+    "p95_ms": 0.252,
+    "p99_ms": 0.314
+  }
+}

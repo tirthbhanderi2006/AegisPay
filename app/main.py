@@ -7,6 +7,9 @@ from app.api.routes import router
 from app.api.lifecycle_routes import lifecycle_router
 from app.api.firewall_routes import firewall_router
 from app.api.entity_routes import entity_router
+from app.api.audit_routes import audit_router
+from app.api.calibration_routes import calibration_router
+from app.api.monitoring_routes import monitoring_router
 from app.config import settings
 from app.db import repository
 
@@ -15,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="AegisPay", version="0.3.0")
+    app = FastAPI(title="AegisPay", version="0.4.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -29,6 +32,9 @@ def create_app() -> FastAPI:
     app.include_router(lifecycle_router)
     app.include_router(firewall_router)
     app.include_router(entity_router)
+    app.include_router(audit_router)
+    app.include_router(calibration_router)
+    app.include_router(monitoring_router)
 
     @app.on_event("startup")
     def _startup():

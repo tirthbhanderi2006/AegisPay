@@ -16,7 +16,7 @@ Same input -> same score.  No randomness.  No LLM.  No ML.
 """
 
 import math
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.models.firewall import BehavioralFeatures, RiskSignal, SignalSeverity
 
@@ -311,9 +311,13 @@ def sequence_component(f: BehavioralFeatures) -> Tuple[float, List[RiskSignal]]:
 # Top-level scorer
 # ---------------------------------------------------------------------------
 
-def compute_risk_score(features: BehavioralFeatures) -> Tuple[float, List[RiskSignal], Dict[str, float]]:
+def compute_risk_score(
+    features: BehavioralFeatures,
+    calibration_config: Optional[Any] = None,
+) -> Tuple[float, List[RiskSignal], Dict[str, float]]:
     """Compute overall risk score from behavioral features.
 
+    Supports optional CalibrationConfig for calibrated offline weights.
     Returns (risk_score, signals, feature_contributions) where risk_score is
     clamped to [0.0, 1.0], and feature_contributions exposes the exact
     mathematical risk contribution of each component.
@@ -325,39 +329,85 @@ def compute_risk_score(features: BehavioralFeatures) -> Tuple[float, List[RiskSi
     h_score, h_signals = historical_deviation_component(features)
     s_score, s_signals = sequence_component(features)
 
-    raw = (
-        W_VELOCITY * v_score
-        + W_RETRY * r_score
-        + W_VARIATION * var_score
-        + W_INFRASTRUCTURE * i_score
-        + W_HISTORICAL * h_score
-        + W_SEQUENCE * s_score
-    )
+    if calibration_config and hasattr(calibration_config, "weights"):
+        weights = calibration_config.weights
+        intercept = getattr(calibration_config, "intercept", 0.0)
 
-    # Combination boost: count how many components fire above threshold
-    component_scores = [v_score, r_score, var_score, i_score, h_score, s_score]
-    firing = sum(1 for c in component_scores if c > 0.4)
+        w_v = weights.get("velocity_score", W_VELOCITY)
+        w_r = weights.get("retry_frequency_score", W_RETRY)
+        w_var = weights.get("variation_anomaly_score", W_VARIATION)
+        w_i = weights.get("infrastructure_risk_score", W_INFRASTRUCTURE)
+        w_h = weights.get("historical_deviation_score", W_HISTORICAL)
+        w_s = weights.get("sequence_anomaly_score", W_SEQUENCE)
+        w_d = weights.get("device_reuse_rate", 0.0)
+        w_f = weights.get("historical_failure_rate", 0.0)
 
-    multiplier = 1.0
-    if firing >= 4:
-        multiplier = 2.5
-    elif firing >= 3:
-        multiplier = 2.0
-    elif firing >= 2:
-        multiplier = 1.5
+        dev_norm = min(1.0, features.accounts_on_device / 5.0)
+        fail_norm = min(1.0, features.historical_failure_rate)
 
-    boosted = raw * multiplier
-    risk_score = max(0.0, min(1.0, boosted))
+        feat_map = {
+            "velocity_score": v_score,
+            "retry_frequency_score": r_score,
+            "infrastructure_risk_score": i_score,
+            "variation_anomaly_score": var_score,
+            "historical_deviation_score": h_score,
+            "sequence_anomaly_score": s_score,
+            "device_reuse_rate": dev_norm,
+            "ip_failure_rate": fail_norm,
+            "cross_merchant_propagated_risk": 0.0,
+            "historical_failure_rate": fail_norm,
+        }
 
-    # Feature contribution breakdown (exact mathematical contribution per component)
-    contributions = {
-        "velocity": round(min(1.0, W_VELOCITY * v_score * multiplier), 4),
-        "retry": round(min(1.0, W_RETRY * r_score * multiplier), 4),
-        "variation": round(min(1.0, W_VARIATION * var_score * multiplier), 4),
-        "infrastructure": round(min(1.0, W_INFRASTRUCTURE * i_score * multiplier), 4),
-        "historical_deviation": round(min(1.0, W_HISTORICAL * h_score * multiplier), 4),
-        "sequence": round(min(1.0, W_SEQUENCE * s_score * multiplier), 4),
-    }
+        z = intercept + sum(weights.get(k, 0.0) * feat_map.get(k, 0.0) for k in weights.keys())
+        try:
+            calibrated_prob = 1.0 / (1.0 + math.exp(-z))
+        except OverflowError:
+            calibrated_prob = 0.0 if z < 0 else 1.0
+
+        risk_score = max(0.0, min(1.0, calibrated_prob))
+
+        contributions = {
+            "velocity": round(w_v * v_score, 4),
+            "retry": round(w_r * r_score, 4),
+            "variation": round(w_var * var_score, 4),
+            "infrastructure": round(w_i * i_score + w_d * dev_norm, 4),
+            "historical_deviation": round(w_h * h_score + w_f * fail_norm, 4),
+            "sequence": round(w_s * s_score, 4),
+        }
+    else:
+        raw = (
+            W_VELOCITY * v_score
+            + W_RETRY * r_score
+            + W_VARIATION * var_score
+            + W_INFRASTRUCTURE * i_score
+            + W_HISTORICAL * h_score
+            + W_SEQUENCE * s_score
+        )
+
+        # Combination boost: count how many components fire above threshold
+        component_scores = [v_score, r_score, var_score, i_score, h_score, s_score]
+        firing = sum(1 for c in component_scores if c > 0.4)
+
+        multiplier = 1.0
+        if firing >= 4:
+            multiplier = 2.5
+        elif firing >= 3:
+            multiplier = 2.0
+        elif firing >= 2:
+            multiplier = 1.5
+
+        boosted = raw * multiplier
+        risk_score = max(0.0, min(1.0, boosted))
+
+        # Feature contribution breakdown (exact mathematical contribution per component)
+        contributions = {
+            "velocity": round(min(1.0, W_VELOCITY * v_score * multiplier), 4),
+            "retry": round(min(1.0, W_RETRY * r_score * multiplier), 4),
+            "variation": round(min(1.0, W_VARIATION * var_score * multiplier), 4),
+            "infrastructure": round(min(1.0, W_INFRASTRUCTURE * i_score * multiplier), 4),
+            "historical_deviation": round(min(1.0, W_HISTORICAL * h_score * multiplier), 4),
+            "sequence": round(min(1.0, W_SEQUENCE * s_score * multiplier), 4),
+        }
 
     # Assign individual contributions to signals
     for s in v_signals:
@@ -376,5 +426,6 @@ def compute_risk_score(features: BehavioralFeatures) -> Tuple[float, List[RiskSi
     all_signals = v_signals + r_signals + var_signals + i_signals + h_signals + s_signals
 
     return round(risk_score, 4), all_signals, contributions
+
 
 
