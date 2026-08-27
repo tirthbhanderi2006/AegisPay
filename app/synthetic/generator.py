@@ -423,6 +423,174 @@ def gen_distributed_suspicious(
     return events, LABEL_DISTRIBUTED, ACTION_BLOCK, []
 
 
+# Longitudinal scenario labels
+LABEL_LONGITUDINAL_DEVICE_CYCLING = "LONGITUDINAL_DEVICE_CYCLING"
+LABEL_LONGITUDINAL_IP_CYCLING = "LONGITUDINAL_IP_CYCLING"
+LABEL_LONGITUDINAL_LOW_AND_SLOW = "LONGITUDINAL_LOW_AND_SLOW"
+LABEL_LONGITUDINAL_DEVICE_ROTATION = "LONGITUDINAL_DEVICE_ROTATION"
+LABEL_LONGITUDINAL_FAILURE_PATTERN = "LONGITUDINAL_FAILURE_PATTERN"
+
+
+def gen_longitudinal_device_cycling(
+    rng: random.Random, idx: int,
+) -> Tuple[List[Dict], str, str, List[Dict]]:
+    """LONGITUDINAL_DEVICE_CYCLING: Current session has 1 normal attempt, but device historically used across 5 accounts with failures."""
+    dev = f"dev_shared_cycler_{idx:04d}"
+    curr_acc = f"acc_cycler_{idx}_curr"
+    curr_ip = f"10.7.{rng.randint(1,254)}.{rng.randint(1,254)}"
+    sess = f"sess_long_dev_{idx:04d}"
+    amt = round(rng.uniform(20, 100), 2)
+
+    # Current session looks completely benign
+    events = [
+        _evt(f"ldc{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), dev, curr_ip, curr_acc, session=sess),
+        _evt(f"ldc{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 30), dev, curr_ip, curr_acc, session=sess),
+        _evt(f"ldc{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 60), dev, curr_ip, curr_acc, amount=amt, token="tok_curr", session=sess),
+        _evt(f"ldc{idx}_e3", "PAYMENT_FAILED", _ts(_BASE_TIME, 65), dev, curr_ip, curr_acc, session=sess),
+    ]
+
+    # History: 5 previous accounts used this same device with repeated failures
+    history = []
+    for h_idx in range(5):
+        h_acc = f"acc_cycler_{idx}_prev_{h_idx}"
+        h_ip = f"10.7.{rng.randint(1,254)}.{rng.randint(1,254)}"
+        h_base = _BASE_TIME - timedelta(hours=rng.uniform(2, 48))
+        h_sess = f"hist_ldc_{idx}_{h_idx}"
+        history.extend([
+            _evt(f"h_ldc{idx}_{h_idx}_1", "PAYMENT_ATTEMPTED", _ts(h_base, 0), dev, h_ip, h_acc, amount=round(rng.uniform(1, 10), 2), token=f"tok_h_{h_idx}", session=h_sess),
+            _evt(f"h_ldc{idx}_{h_idx}_2", "PAYMENT_FAILED", _ts(h_base, 3), dev, h_ip, h_acc, session=h_sess),
+        ])
+
+    return events, LABEL_LONGITUDINAL_DEVICE_CYCLING, ACTION_BLOCK, history
+
+
+def gen_longitudinal_ip_cycling(
+    rng: random.Random, idx: int,
+) -> Tuple[List[Dict], str, str, List[Dict]]:
+    """LONGITUDINAL_IP_CYCLING: Current session is quiet, but IP historically hosted 8 distinct accounts with failure concentration."""
+    ip = f"198.51.100.{rng.randint(1,254)}"
+    curr_dev = f"dev_ipcyc_{idx}_curr"
+    curr_acc = f"acc_ipcyc_{idx}_curr"
+    sess = f"sess_long_ip_{idx:04d}"
+    amt = round(rng.uniform(20, 80), 2)
+
+    events = [
+        _evt(f"lip{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), curr_dev, ip, curr_acc, session=sess),
+        _evt(f"lip{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 25), curr_dev, ip, curr_acc, session=sess),
+        _evt(f"lip{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 50), curr_dev, ip, curr_acc, amount=amt, token="tok_curr_ip", session=sess),
+        _evt(f"lip{idx}_e3", "PAYMENT_FAILED", _ts(_BASE_TIME, 55), curr_dev, ip, curr_acc, session=sess),
+    ]
+
+    history = []
+    for h_idx in range(8):
+        h_acc = f"acc_ipcyc_{idx}_h_{h_idx}"
+        h_dev = f"dev_ipcyc_{idx}_h_{h_idx}"
+        h_base = _BASE_TIME - timedelta(days=rng.uniform(1, 5))
+        h_sess = f"hist_lip_{idx}_{h_idx}"
+        history.extend([
+            _evt(f"h_lip{idx}_{h_idx}_1", "PAYMENT_ATTEMPTED", _ts(h_base, 0), h_dev, ip, h_acc, amount=round(rng.uniform(5, 50), 2), token=f"tok_lip_{h_idx}", session=h_sess),
+            _evt(f"h_lip{idx}_{h_idx}_2", "PAYMENT_FAILED", _ts(h_base, 5), h_dev, ip, h_acc, session=h_sess),
+        ])
+
+    return events, LABEL_LONGITUDINAL_IP_CYCLING, ACTION_CHALLENGE, history
+
+
+def gen_longitudinal_low_and_slow(
+    rng: random.Random, idx: int,
+) -> Tuple[List[Dict], str, str, List[Dict]]:
+    """LONGITUDINAL_LOW_AND_SLOW: 1 single attempt in session, but 12 historical sessions of card probing."""
+    acc = f"acc_lowslow_{idx:04d}"
+    dev = f"dev_lowslow_{idx:04d}"
+    ip = f"10.8.{rng.randint(1,254)}.{rng.randint(1,254)}"
+    sess = f"sess_lowslow_{idx:04d}"
+    amt = round(rng.uniform(1, 5), 2)
+
+    events = [
+        _evt(f"lls{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), dev, ip, acc, session=sess),
+        _evt(f"lls{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 40), dev, ip, acc, session=sess),
+        _evt(f"lls{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 90), dev, ip, acc, amount=amt, token=f"tok_probe_curr_{idx}", session=sess),
+        _evt(f"lls{idx}_e3", "PAYMENT_FAILED", _ts(_BASE_TIME, 95), dev, ip, acc, session=sess),
+    ]
+
+    history = []
+    for h_idx in range(12):
+        h_base = _BASE_TIME - timedelta(days=rng.uniform(1, 14))
+        h_sess = f"hist_lls_{idx}_{h_idx}"
+        history.extend([
+            _evt(f"h_lls{idx}_{h_idx}_1", "PAYMENT_ATTEMPTED", _ts(h_base, 0), dev, ip, acc, amount=round(rng.uniform(1, 5), 2), token=f"tok_probe_{h_idx}", session=h_sess),
+            _evt(f"h_lls{idx}_{h_idx}_2", "PAYMENT_FAILED", _ts(h_base, 4), dev, ip, acc, session=h_sess),
+        ])
+
+    return events, LABEL_LONGITUDINAL_LOW_AND_SLOW, ACTION_BLOCK, history
+
+
+def gen_longitudinal_device_rotation(
+    rng: random.Random, idx: int,
+) -> Tuple[List[Dict], str, str, List[Dict]]:
+    """LONGITUDINAL_DEVICE_ROTATION: Account historically had 1 stable device, but rotated through 5 devices in 48h."""
+    acc = f"acc_devrot_{idx:04d}"
+    curr_dev = f"dev_rot_{idx}_5"
+    ip = f"10.9.{rng.randint(1,254)}.{rng.randint(1,254)}"
+    sess = f"sess_devrot_{idx:04d}"
+    amt = round(rng.uniform(40, 200), 2)
+
+    events = [
+        _evt(f"ldr{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), curr_dev, ip, acc, session=sess),
+        _evt(f"ldr{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 30), curr_dev, ip, acc, session=sess),
+        _evt(f"ldr{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 75), curr_dev, ip, acc, amount=amt, token="tok_rot_main", session=sess),
+        _evt(f"ldr{idx}_e3", "PAYMENT_FAILED", _ts(_BASE_TIME, 80), curr_dev, ip, acc, session=sess),
+    ]
+
+    history = []
+    # Stable historical period with dev_rot_0
+    for h_idx in range(6):
+        h_base = _BASE_TIME - timedelta(days=rng.uniform(30, 90))
+        h_sess = f"hist_ldr_stable_{idx}_{h_idx}"
+        history.extend([
+            _evt(f"h_ldr_s{idx}_{h_idx}_1", "PAYMENT_ATTEMPTED", _ts(h_base, 0), f"dev_rot_{idx}_0", "10.0.0.1", acc, amount=50.0, token="tok_rot_main", session=h_sess),
+            _evt(f"h_ldr_s{idx}_{h_idx}_2", "PAYMENT_SUCCEEDED", _ts(h_base, 5), f"dev_rot_{idx}_0", "10.0.0.1", acc, amount=50.0, token="tok_rot_main", session=h_sess),
+        ])
+    # Sudden burst of 4 different devices in last 48 hours
+    for h_idx in range(1, 5):
+        h_base = _BASE_TIME - timedelta(hours=rng.uniform(4, 48))
+        h_sess = f"hist_ldr_rot_{idx}_{h_idx}"
+        history.extend([
+            _evt(f"h_ldr_r{idx}_{h_idx}_1", "PAYMENT_ATTEMPTED", _ts(h_base, 0), f"dev_rot_{idx}_{h_idx}", ip, acc, amount=100.0, token="tok_rot_main", session=h_sess),
+            _evt(f"h_ldr_r{idx}_{h_idx}_2", "PAYMENT_FAILED", _ts(h_base, 5), f"dev_rot_{idx}_{h_idx}", ip, acc, session=h_sess),
+        ])
+
+    return events, LABEL_LONGITUDINAL_DEVICE_ROTATION, ACTION_CHALLENGE, history
+
+
+def gen_longitudinal_failure_pattern(
+    rng: random.Random, idx: int,
+) -> Tuple[List[Dict], str, str, List[Dict]]:
+    """LONGITUDINAL_FAILURE_PATTERN: Normal session, but 90% failure rate across history."""
+    acc = f"acc_failpat_{idx:04d}"
+    dev = f"dev_failpat_{idx:04d}"
+    ip = f"10.10.{rng.randint(1,254)}.{rng.randint(1,254)}"
+    sess = f"sess_failpat_{idx:04d}"
+    amt = round(rng.uniform(10, 50), 2)
+
+    events = [
+        _evt(f"lfp{idx}_e0", "SESSION_STARTED", _ts(_BASE_TIME, 0), dev, ip, acc, session=sess),
+        _evt(f"lfp{idx}_e1", "CHECKOUT_VIEWED", _ts(_BASE_TIME, 30), dev, ip, acc, session=sess),
+        _evt(f"lfp{idx}_e2", "PAYMENT_ATTEMPTED", _ts(_BASE_TIME, 80), dev, ip, acc, amount=amt, token="tok_failpat_curr", session=sess),
+        _evt(f"lfp{idx}_e3", "PAYMENT_FAILED", _ts(_BASE_TIME, 85), dev, ip, acc, session=sess),
+    ]
+
+    history = []
+    for h_idx in range(10):
+        h_base = _BASE_TIME - timedelta(days=rng.uniform(1, 7))
+        h_sess = f"hist_lfp_{idx}_{h_idx}"
+        history.extend([
+            _evt(f"h_lfp{idx}_{h_idx}_1", "PAYMENT_ATTEMPTED", _ts(h_base, 0), dev, ip, acc, amount=round(rng.uniform(10, 50), 2), token=f"tok_fp_{h_idx}", session=h_sess),
+            _evt(f"h_lfp{idx}_{h_idx}_2", "PAYMENT_FAILED" if h_idx < 9 else "PAYMENT_SUCCEEDED", _ts(h_base, 4), dev, ip, acc, session=h_sess),
+        ])
+
+    return events, LABEL_LONGITUDINAL_FAILURE_PATTERN, ACTION_BLOCK, history
+
+
 # ---------------------------------------------------------------------------
 # Master generator
 # ---------------------------------------------------------------------------
@@ -441,6 +609,12 @@ _SCENARIO_GENERATORS = {
     LABEL_SHARED_IP: gen_legitimate_shared_ip,
     LABEL_LEGIT_RETRY: gen_legitimate_retry,
     LABEL_DISTRIBUTED: gen_distributed_suspicious,
+    # Phase 2.1 — True Longitudinal Scenarios
+    LABEL_LONGITUDINAL_DEVICE_CYCLING: gen_longitudinal_device_cycling,
+    LABEL_LONGITUDINAL_IP_CYCLING: gen_longitudinal_ip_cycling,
+    LABEL_LONGITUDINAL_LOW_AND_SLOW: gen_longitudinal_low_and_slow,
+    LABEL_LONGITUDINAL_DEVICE_ROTATION: gen_longitudinal_device_rotation,
+    LABEL_LONGITUDINAL_FAILURE_PATTERN: gen_longitudinal_failure_pattern,
 }
 
 # Map sub-labels to canonical labels for evaluation
@@ -484,3 +658,4 @@ def generate_dataset(
 
     rng.shuffle(dataset)
     return dataset
+

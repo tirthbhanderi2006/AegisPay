@@ -67,8 +67,22 @@ def evaluate_session(
     if not has_account:
         missing_data.append("account_id")
 
+    # --- Evidence Quality calculation (deterministic) ---
+    quality_score = 0.0
+    if session_events:
+        quality_score += 0.25
+    if has_device:
+        quality_score += 0.15
+    if has_ip:
+        quality_score += 0.15
+    if has_account:
+        quality_score += 0.15
+    if historical_events and len(historical_events) > 0:
+        quality_score += 0.30
+    evidence_quality = round(min(1.0, quality_score), 2)
+
     # --- Scoring ---
-    risk_score, signals = compute_risk_score(features)
+    risk_score, signals, feature_contributions = compute_risk_score(features)
 
     # --- Intent classification ---
     intent, _reasons = classify_intent(features)
@@ -86,10 +100,13 @@ def evaluate_session(
         signals=signals,
         missing_data=missing_data,
         features=features,
+        feature_contributions=feature_contributions,
+        evidence_quality=evidence_quality,
         policy_version=POLICY_VERSION,
         engine_version=ENGINE_VERSION,
         latency_ms=round(elapsed_ms, 3),
     )
+
 
 
 def evaluate_session_from_dicts(

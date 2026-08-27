@@ -11,12 +11,14 @@ Runs the engine against synthetic ground-truth data and computes:
 import statistics
 import time
 from collections import Counter, defaultdict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.firewall.engine import evaluate_session_from_dicts
-from app.models.firewall import IntentClass
+from app.models.firewall import IntentClass, RecommendedAction
 from app.synthetic.generator import (
     ACTION_ALLOW,
+    ACTION_CHALLENGE,
+    ACTION_BLOCK,
     LABEL_AUTOMATED_CHECKOUT,
     LABEL_CARD_TESTING,
     LABEL_DISTRIBUTED,
@@ -26,6 +28,11 @@ from app.synthetic.generator import (
     LABEL_NORMAL,
     LABEL_SHARED_DEVICE,
     LABEL_SHARED_IP,
+    LABEL_LONGITUDINAL_DEVICE_CYCLING,
+    LABEL_LONGITUDINAL_IP_CYCLING,
+    LABEL_LONGITUDINAL_LOW_AND_SLOW,
+    LABEL_LONGITUDINAL_DEVICE_ROTATION,
+    LABEL_LONGITUDINAL_FAILURE_PATTERN,
     generate_dataset,
 )
 
@@ -33,20 +40,30 @@ from app.synthetic.generator import (
 _LABEL_TO_INTENT = {
     LABEL_NORMAL: IntentClass.NORMAL,
     LABEL_CARD_TESTING: IntentClass.CARD_TESTING,
-    LABEL_LOW_AND_SLOW: IntentClass.SUSPICIOUS_VELOCITY,  # low-and-slow maps to velocity
+    LABEL_LOW_AND_SLOW: IntentClass.SUSPICIOUS_VELOCITY,
     LABEL_ACCOUNT_TAKEOVER: IntentClass.ACCOUNT_TAKEOVER_LIKE,
     LABEL_AUTOMATED_CHECKOUT: IntentClass.AUTOMATED_CHECKOUT,
     LABEL_SHARED_DEVICE: IntentClass.NORMAL,
     LABEL_SHARED_IP: IntentClass.NORMAL,
     LABEL_LEGIT_RETRY: IntentClass.NORMAL,
-    LABEL_DISTRIBUTED: IntentClass.CARD_TESTING,  # distributed maps to card_testing
+    LABEL_DISTRIBUTED: IntentClass.CARD_TESTING,
+    # Phase 2.1 — Longitudinal scenarios
+    LABEL_LONGITUDINAL_DEVICE_CYCLING: IntentClass.CARD_TESTING,
+    LABEL_LONGITUDINAL_IP_CYCLING: IntentClass.SUSPICIOUS_VELOCITY,
+    LABEL_LONGITUDINAL_LOW_AND_SLOW: IntentClass.CARD_TESTING,
+    LABEL_LONGITUDINAL_DEVICE_ROTATION: IntentClass.ACCOUNT_TAKEOVER_LIKE,
+    LABEL_LONGITUDINAL_FAILURE_PATTERN: IntentClass.CARD_TESTING,
 }
 
 # Is this label "malicious" for binary detection metric?
 _MALICIOUS = {
     LABEL_CARD_TESTING, LABEL_LOW_AND_SLOW, LABEL_ACCOUNT_TAKEOVER,
     LABEL_AUTOMATED_CHECKOUT, LABEL_DISTRIBUTED,
+    LABEL_LONGITUDINAL_DEVICE_CYCLING, LABEL_LONGITUDINAL_IP_CYCLING,
+    LABEL_LONGITUDINAL_LOW_AND_SLOW, LABEL_LONGITUDINAL_DEVICE_ROTATION,
+    LABEL_LONGITUDINAL_FAILURE_PATTERN,
 }
+
 
 
 def _is_malicious_intent(intent: IntentClass) -> bool:
@@ -206,6 +223,21 @@ def run_ablation(sessions: int = 100, seed: int = 42) -> Dict[str, Any]:
     session_only = run_evaluation(sessions=sessions, seed=seed, lifecycle_aware=False)
     lifecycle_aware = run_evaluation(sessions=sessions, seed=seed, lifecycle_aware=True)
 
+    # Per-scenario delta comparison
+    scenario_comparison: Dict[str, Dict[str, Any]] = {}
+    all_scenarios = sorted(set(session_only["per_scenario"].keys()) | set(lifecycle_aware["per_scenario"].keys()))
+    for sc in all_scenarios:
+        s_res = session_only["per_scenario"].get(sc, {})
+        l_res = lifecycle_aware["per_scenario"].get(sc, {})
+        scenario_comparison[sc] = {
+            "session_only_risk": s_res.get("avg_risk_score", 0.0),
+            "lifecycle_aware_risk": l_res.get("avg_risk_score", 0.0),
+            "risk_delta": round(l_res.get("avg_risk_score", 0.0) - s_res.get("avg_risk_score", 0.0), 4),
+            "session_only_action_acc": s_res.get("action_accuracy", 0.0),
+            "lifecycle_aware_action_acc": l_res.get("action_accuracy", 0.0),
+            "action_acc_delta": round(l_res.get("action_accuracy", 0.0) - s_res.get("action_accuracy", 0.0), 4),
+        }
+
     return {
         "session_only": session_only,
         "lifecycle_aware": lifecycle_aware,
@@ -223,4 +255,116 @@ def run_ablation(sessions: int = 100, seed: int = 42) -> Dict[str, Any]:
                 lifecycle_aware["overall"]["false_positive_rate"] - session_only["overall"]["false_positive_rate"], 4
             ),
         },
+        "scenario_comparison": scenario_comparison,
     }
+
+
+def run_card_testing_breakdown(sessions: int = 180, seed: int = 42) -> Dict[str, Any]:
+    """Breakdown of CARD_TESTING A-E variants for in-depth investigation."""
+    dataset = generate_dataset(sessions=sessions, seed=seed)
+    ct_variants = ["CARD_TESTING_A", "CARD_TESTING_B", "CARD_TESTING_C", "CARD_TESTING_D", "CARD_TESTING_E"]
+    breakdown: Dict[str, Dict[str, Any]] = {}
+
+    for var in ct_variants:
+        samples = [s for s in dataset if s["scenario"] == var]
+        if not samples:
+            continue
+        risks: List[float] = []
+        actions: Counter = Counter()
+
+        for s in samples:
+            assessment = evaluate_session_from_dicts(
+                session_events=s["events"],
+                session_id=s["session_id"],
+                historical_events=s["historical_events"],
+            )
+            risks.append(assessment.risk_score)
+            actions[assessment.action.value] += 1
+
+        n = len(samples)
+        breakdown[var] = {
+            "samples": n,
+            "avg_risk": round(statistics.mean(risks), 4) if risks else 0.0,
+            "min_risk": round(min(risks), 4) if risks else 0.0,
+            "max_risk": round(max(risks), 4) if risks else 0.0,
+            "allow_pct": round((actions.get("ALLOW", 0) / n) * 100, 1),
+            "challenge_pct": round((actions.get("CHALLENGE", 0) / n) * 100, 1),
+            "block_pct": round((actions.get("BLOCK", 0) / n) * 100, 1),
+        }
+
+    return breakdown
+
+
+def run_threshold_sensitivity(
+    sessions: int = 180,
+    seed: int = 42,
+    low_thresholds: Optional[List[float]] = None,
+    high_thresholds: Optional[List[float]] = None,
+) -> Dict[str, Any]:
+    """Run a grid sensitivity analysis across multiple (LOW, HIGH) threshold pairs."""
+    dataset = generate_dataset(sessions=sessions, seed=seed)
+    low_grid = low_thresholds or [0.20, 0.25, 0.30, 0.35, 0.40]
+    high_grid = high_thresholds or [0.60, 0.65, 0.70, 0.75, 0.80]
+
+    # Pre-evaluate all samples to get raw risk scores
+    evaluations: List[Tuple[float, str, bool]] = []
+    for s in dataset:
+        assessment = evaluate_session_from_dicts(
+            session_events=s["events"],
+            session_id=s["session_id"],
+            historical_events=s["historical_events"],
+        )
+        is_mal = s["label"] in _MALICIOUS
+        evaluations.append((assessment.risk_score, s["label"], is_mal))
+
+    grid_results: List[Dict[str, Any]] = []
+
+    for low in low_grid:
+        for high in high_grid:
+            if low >= high:
+                continue
+
+            allow_cnt = 0
+            challenge_cnt = 0
+            block_cnt = 0
+            tp = fp = fn = tn = 0
+
+            for score, label, is_mal in evaluations:
+                if score >= high:
+                    act = "BLOCK"
+                    block_cnt += 1
+                elif score >= low:
+                    act = "CHALLENGE"
+                    challenge_cnt += 1
+                else:
+                    act = "ALLOW"
+                    allow_cnt += 1
+
+                pred_mal = act in ("CHALLENGE", "BLOCK")
+                if is_mal and pred_mal:
+                    tp += 1
+                elif is_mal and not pred_mal:
+                    fn += 1
+                elif not is_mal and pred_mal:
+                    fp += 1
+                else:
+                    tn += 1
+
+            p, r, f1 = _precision_recall_f1(tp, fp, fn)
+            fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+            n = len(evaluations)
+
+            grid_results.append({
+                "low_threshold": low,
+                "high_threshold": high,
+                "precision": p,
+                "recall": r,
+                "f1": f1,
+                "fpr": round(fpr, 4),
+                "block_pct": round((block_cnt / n) * 100, 1),
+                "challenge_pct": round((challenge_cnt / n) * 100, 1),
+                "allow_pct": round((allow_cnt / n) * 100, 1),
+            })
+
+    return {"grid": grid_results, "total_samples": len(evaluations)}
+
