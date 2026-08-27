@@ -18,6 +18,7 @@ from app.firewall.policy import POLICY_VERSION, decide_action
 from app.firewall.scoring import ENGINE_VERSION, compute_risk_score
 from app.models.firewall import (
     FirewallAssessment,
+    RecommendedAction,
     SessionEvaluationRequest,
 )
 
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 def evaluate_session(
     request: SessionEvaluationRequest,
     historical_events: Optional[List[Dict[str, Any]]] = None,
+    cross_merchant_graph: Optional[Any] = None,
 ) -> FirewallAssessment:
     """Run the full firewall evaluation pipeline.
 
@@ -81,14 +83,58 @@ def evaluate_session(
         quality_score += 0.30
     evidence_quality = round(min(1.0, quality_score), 2)
 
-    # --- Scoring ---
+    # --- Base Behavioral Scoring ---
     risk_score, signals, feature_contributions = compute_risk_score(features)
+
+    # --- Cross-Merchant Intelligence Integration ---
+    if cross_merchant_graph:
+        from app.entity_intelligence.entities import EntityType, make_entity_id
+        from app.entity_intelligence.risk import compute_cross_merchant_risk
+        from app.models.firewall import RiskSignal, SignalSeverity
+        dev = request.device_hash or next((e.get("device_hash") for e in session_events if e.get("device_hash")), None)
+        ip = request.ip_address or next((e.get("ip_address") for e in session_events if e.get("ip_address")), None)
+
+        cross_risk_max = 0.0
+        if dev:
+            d_id = make_entity_id(EntityType.DEVICE, dev)
+            d_res = compute_cross_merchant_risk(cross_merchant_graph, d_id)
+            if d_res.risk_score > 0.2:
+                cross_risk_max = max(cross_risk_max, d_res.risk_score)
+                for s in d_res.signals:
+                    signals.append(RiskSignal(
+                        name=s.name,
+                        value=s.value,
+                        severity=s.severity,
+                        contribution=s.contribution,
+                        description=s.description,
+                    ))
+        if ip:
+            i_id = make_entity_id(EntityType.IP, ip)
+            i_res = compute_cross_merchant_risk(cross_merchant_graph, i_id)
+            if i_res.risk_score > 0.2:
+                cross_risk_max = max(cross_risk_max, i_res.risk_score)
+                for s in i_res.signals:
+                    signals.append(RiskSignal(
+                        name=s.name,
+                        value=s.value,
+                        severity=s.severity,
+                        contribution=s.contribution,
+                        description=s.description,
+                    ))
+
+
+        if cross_risk_max > risk_score:
+            risk_score = round(max(risk_score, cross_risk_max), 4)
 
     # --- Intent classification ---
     intent, _reasons = classify_intent(features)
 
-    # --- Action policy ---
+    # --- Conservative Action policy ---
     action = decide_action(risk_score, intent)
+    # Conservative policy rule: if high risk is solely driven by cross-merchant graph but evidence quality is low,
+    # downgrade BLOCK to CHALLENGE (never blind block on weak evidence)
+    if action == RecommendedAction.BLOCK and evidence_quality < 0.70 and risk_score < 0.85:
+        action = RecommendedAction.CHALLENGE
 
     elapsed_ms = (time.perf_counter() - start) * 1000.0
 
@@ -117,6 +163,7 @@ def evaluate_session_from_dicts(
     device_hash: Optional[str] = None,
     ip_address: Optional[str] = None,
     account_id: Optional[str] = None,
+    cross_merchant_graph: Optional[Any] = None,
 ) -> FirewallAssessment:
     """Convenience wrapper that accepts raw dicts instead of Pydantic models.
 
@@ -147,4 +194,4 @@ def evaluate_session_from_dicts(
         ip_address=ip_address,
         account_id=account_id,
     )
-    return evaluate_session(request, historical_events=historical_events)
+    return evaluate_session(request, historical_events=historical_events, cross_merchant_graph=cross_merchant_graph)

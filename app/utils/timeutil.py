@@ -17,3 +17,7 @@ def parse_ts(value) -> Optional[datetime]:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+parse_iso8601 = parse_ts
+

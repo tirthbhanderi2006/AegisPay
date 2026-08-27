@@ -209,9 +209,42 @@ python -m app.synthetic sensitivity --sessions 1000 --seed 42
 - **IP Cycling:** Single benign attempt on dirty IP $\rightarrow$ caught via 8-account IP failure history (**Risk +0.728** $\rightarrow$ `BLOCK`).
 - **Low-and-Slow Card Testing:** Single probe attempt $\rightarrow$ caught via accumulated historical failures (**Risk +0.238** $\rightarrow$ `CHALLENGE`).
 
+### Phase 3 — Cross-Merchant Entity Intelligence
+
+AegisPay Phase 3 adds an explainable, deterministic cross-merchant entity graph connecting `merchant`, `account`, `device`, `ip`, and `payment_instrument` entities.
+
+#### Key Capabilities
+- **Deterministic Risk Propagation:** Risk decays by hop proximity ($1.0\times$ direct, $0.5\times$ 1-hop, $0.25\times$ 2-hop) into an aggregate transaction risk score.
+- **Safe Shared Infrastructure:** Corporate NATs, mobile carrier CGNAT, and family shared tablets with 0% failure history are attenuated to 0.0 risk.
+- **Temporal Cutoff Guardrails:** Strict `as_of = T` temporal filtering prevents hindsight leakage.
+- **Privacy Boundaries:** Explanations never disclose counterparty merchant IDs or customer PII.
+
+```powershell
+# Run Headline Local vs Cross-Merchant Ablation (Proves +50% Detection Gain)
+python -m app.entity_intelligence.cli ablation --samples 500 --seed 42
+
+# Validate Temporal Integrity (0% Hindsight Leakage)
+python -m app.entity_intelligence.cli temporal-test
+
+# Generate Explainable Risk Assessment with Privacy Boundaries
+python -m app.entity_intelligence.cli explain --entity-id dev_ring_0000
+```
+
+#### Phase 3 Headline Ablation Results (Local vs Cross-Merchant Engine)
+
+| Metric | Merchant-Local Engine (Siloed) | Cross-Merchant Engine (Network Graph) | Memory Delta |
+|---|---|---|---|
+| **Precision** | 100.00% | **100.00%** | +0.00% |
+| **Recall / Detection** | 50.00% | **100.00%** | **+50.00%** |
+| **F1 Score** | 66.67% | **100.00%** | **+33.33%** |
+| **False Positive Rate** | 0.00% | **0.00%** | +0.00% |
+| **P50 Latency** | 0.26 ms | **0.77 ms** | +0.51 ms |
+| **P95 Latency** | 0.58 ms | **1.67 ms** | +1.09 ms |
+
 ## Upgrade paths
 
 Auth on webhook · async webhook mode with job queue · Alembic migrations · per-node model diversity ·
-win-probability calibration from historical outcomes · ML fraud calibration · Phase 3 cross-merchant graph analytics.
+win-probability calibration from historical outcomes · Neo4j / Graph DB migration for 100M+ nodes · multi-currency FX tables.
+
 
 

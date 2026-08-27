@@ -38,4 +38,7 @@ class AegisState(TypedDict, total=False):
     evidence_completeness: Optional[float]
     # Phase 2 — behavioral firewall assessment context
     firewall_assessments: Optional[List[Dict[str, Any]]]
+    # Phase 3 — cross-merchant entity intelligence context
+    cross_merchant_context: Optional[Dict[str, Any]]
+
 
