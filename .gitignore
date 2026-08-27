@@ -69,4 +69,7 @@ out/
 Thumbs.db
 
 #context folder
-opencode context mds 
+opencode context mds
+
+# Local Phase Reports (keep local only)
+PHASE_*_REPORT.md 

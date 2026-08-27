@@ -26,15 +26,25 @@ def get_thresholds():
     return _LOW_THRESHOLD, _HIGH_THRESHOLD
 
 
-def decide_action(risk_score: float, intent: IntentClass) -> RecommendedAction:
+from typing import Optional
+
+def decide_action(
+    risk_score: float,
+    intent: IntentClass = IntentClass.NORMAL,
+    low_threshold: Optional[float] = None,
+    high_threshold: Optional[float] = None,
+) -> RecommendedAction:
     """Map risk score + intent to a recommended action.
 
     UNKNOWN intent always -> ALLOW (insufficient data, don't block).
     """
     if intent == IntentClass.UNKNOWN:
         return RecommendedAction.ALLOW
-    if risk_score >= _HIGH_THRESHOLD:
+    low = low_threshold if low_threshold is not None else _LOW_THRESHOLD
+    high = high_threshold if high_threshold is not None else _HIGH_THRESHOLD
+    if risk_score >= high:
         return RecommendedAction.BLOCK
-    if risk_score >= _LOW_THRESHOLD:
+    if risk_score >= low:
         return RecommendedAction.CHALLENGE
     return RecommendedAction.ALLOW
+
