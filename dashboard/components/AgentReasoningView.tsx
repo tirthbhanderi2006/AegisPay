@@ -8,7 +8,7 @@ import {
   Scale,
   Truck,
 } from "lucide-react";
-import { AccordionSection, Badge, ConfidenceBar, KeyValue, Panel } from "./ui";
+import { AccordionSection, Badge, ConfidenceBar, KeyValue, Panel } from "./legacy-ui";
 import { formatMoney, formatUtc, cn } from "@/lib/format";
 import {
   COST_TO_FIGHT_USD,
@@ -77,7 +77,7 @@ function TelemetrySections({ detail }: { detail: DisputeDetail }) {
             </p>
           ) : (
             <ul className="flex flex-col gap-1">
-              {qualifying.map((tx) => (
+              {qualifying.map((tx: any) => (
                 <li
                   key={tx.transaction_id ?? tx.days_before_dispute}
                   className="flex items-center gap-2 rounded border border-emerald-200 bg-emerald-50 px-2 py-1.5 font-mono text-[11px] text-emerald-800"
@@ -212,7 +212,7 @@ function AdversarialTrail({ detail }: { detail: DisputeDetail }) {
                   Adversarial Auditor — flagged deficiencies
                 </p>
                 <ul className="mt-1 list-disc space-y-1 pl-4 text-[11px] leading-snug text-ink-muted">
-                  {audit.deficiencies.map((d) => (
+                  {audit.deficiencies.map((d: any) => (
                     <li key={d}>{d}</li>
                   ))}
                 </ul>
@@ -228,7 +228,7 @@ function AdversarialTrail({ detail }: { detail: DisputeDetail }) {
                   Prescribed revisions
                 </p>
                 <ul className="mt-1 list-disc space-y-1 pl-4 text-[11px] leading-snug text-ink-faint">
-                  {audit.suggested_revisions.map((s) => (
+                  {audit.suggested_revisions.map((s: any) => (
                     <li key={s}>{s}</li>
                   ))}
                 </ul>

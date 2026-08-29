@@ -1,6 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bg-primary: #0F172A;
+  --bg-raised: #1E293B;
+  --bg-overlay: #1A1E2F;
+  --fg-primary: #F8FAFC;
+  --fg-muted: #94A3B8;
+  --fg-faint: #64748B;
+  --border-primary: #334155;
+  --border-strong: #475569;
+  --gold: #F59E0B;
+  --gold-light: #FBBF24;
+  --gold-dark: #D97706;
+  --purple: #8B5CF6;
+  --purple-light: #A78BFA;
+  --purple-dark: #7C3AED;
+  --emerald: #059669;
+  --emerald-light: #10B981;
+  --emerald-dark: #047857;
+  --amber: #D97706;
+  --amber-light: #F59E0B;
+  --amber-dark: #B45309;
+  --red: #DC2626;
+  --red-light: #EF4444;
+  --red-dark: #B91C1C;
+  --azure: #2563EB;
+  --azure-light: #3B82F6;
+  --azure-dark: #1D4ED8;
+}
+
+.light {
+  --bg-primary: #F7F9FB;
+  --bg-raised: #FFFFFF;
+  --bg-overlay: #EEF2F6;
+  --fg-primary: #101B2D;
+  --fg-muted: #4E6178;
+  --fg-faint: #8CA0B3;
+  --border-primary: #E3E9EF;
+  --border-strong: #C9D4DE;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--fg-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
 
 ::selection {
   background-color: rgba(37, 99, 235, 0.16);
@@ -9,7 +68,7 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c9d4de transparent;
+  scrollbar-color: var(--border-primary) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -22,12 +81,12 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #c9d4de;
+  background-color: var(--border-primary);
   border-radius: 3px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #aebfcd;
+  background-color: var(--border-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -53,4 +112,45 @@
     inset: 0;
     box-shadow: none;
   }
+}
+
+@layer components {
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+  }
+  
+  .focus-ring-light {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surfaceLight;
+  }
+  
+  .transition-fast {
+    @apply transition-all duration-150 ease-out;
+  }
+  
+  .transition-normal {
+    @apply transition-all duration-200 ease-out;
+  }
+  
+  .transition-slow {
+    @apply transition-all duration-300 ease-out;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-in {
+    animation: fade-up 0.35s ease-out both;
+  }
+  
+  .delay-1 { animation-delay: 50ms; }
+  .delay-2 { animation-delay: 100ms; }
+  .delay-3 { animation-delay: 150ms; }
+  .delay-4 { animation-delay: 200ms; }
+  .delay-5 { animation-delay: 250ms; }
+  .delay-6 { animation-delay: 300ms; }
+  .delay-7 { animation-delay: 350ms; }
+  .delay-8 { animation-delay: 400ms; }
 }

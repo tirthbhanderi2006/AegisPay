@@ -12,7 +12,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge, Button, KeyValue, Panel } from "./ui";
+import { Badge, Button, KeyValue, Panel } from "./legacy-ui";
 import { formatMoney, formatUtc, sha256Hex, cn } from "@/lib/format";
 import type { DisputeDetail } from "@/lib/types";
 
@@ -133,7 +133,7 @@ function DossierDocument({ detail }: { detail: DisputeDetail }) {
                 </tr>
               </thead>
               <tbody>
-                {dossier.evidence_points.map((point) => (
+                {dossier.evidence_points.map((point: any) => (
                   <tr key={point.category + point.claim.slice(0, 24)} className="align-top odd:bg-white even:bg-zinc-50">
                     <td className="border-b border-zinc-200 px-2.5 py-2 font-semibold">{point.category}</td>
                     <td className="border-b border-zinc-200 px-2.5 py-2 leading-snug text-zinc-700">{point.claim}</td>
@@ -159,7 +159,7 @@ function DossierDocument({ detail }: { detail: DisputeDetail }) {
           <h4 className="mb-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
             Rebuttal Narrative
           </h4>
-          {dossier.rebuttal_narrative.split(/\n\n+/).map((paragraph) => (
+          {dossier.rebuttal_narrative.split(/\n\n+/).map((paragraph: any) => (
             <p key={paragraph.slice(0, 32)} className="mb-2 text-sm leading-relaxed text-zinc-700">
               {paragraph}
             </p>
@@ -270,7 +270,7 @@ export function DossierViewer({
           <p className="mt-2.5 text-xs leading-relaxed text-ink-muted">{r.primary_gap}</p>
           {r.rule_engine.rejection_reasons.length > 0 ? (
             <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-snug text-ink-faint">
-              {r.rule_engine.rejection_reasons.map((reason) => (
+              {r.rule_engine.rejection_reasons.map((reason: any) => (
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
