@@ -9,7 +9,7 @@ import {
   Swords,
   WifiOff,
 } from "lucide-react";
-import { Badge, Button, SegmentedControl } from "./ui";
+import { Badge, Button, SegmentedControl } from "./legacy-ui";
 import { SCENARIOS } from "@/lib/fixtures";
 import type { HealthInfo, Role } from "@/lib/types";
 import { cn } from "@/lib/format";

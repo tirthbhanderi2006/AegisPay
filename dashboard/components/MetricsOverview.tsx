@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleDollarSign, ShieldAlert, TrendingUp, Wallet } from "lucide-react";
-import { Panel } from "./ui";
+import { Panel } from "./legacy-ui";
 import { formatMoney, formatPercent } from "@/lib/format";
 import type { DisputeRecord, Role } from "@/lib/types";
 

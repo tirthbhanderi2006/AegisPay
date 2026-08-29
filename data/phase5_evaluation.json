@@ -7,9 +7,9 @@
     "MANUAL_HOLD": 0
   },
   "latency_percentiles_ms": {
-    "p50": 3.918,
-    "p95": 4.959,
-    "p99": 5.69
+    "p50": 4.132,
+    "p95": 5.411,
+    "p99": 7.25
   },
   "idempotency_verified": true,
   "privacy_boundary_enforced": true,

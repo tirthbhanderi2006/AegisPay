@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, Inbox } from "lucide-react";
-import { NetworkChip, Panel } from "./ui";
+import { NetworkChip, Panel } from "./legacy-ui";
 import { formatMoney, relativeTime, cn } from "@/lib/format";
 import { FINAL_STATUS_LABELS, type DisputeRecord } from "@/lib/types";
 

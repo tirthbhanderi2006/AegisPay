@@ -73,3 +73,5 @@ opencode context mds
 
 # Local Phase Reports (keep local only)
 PHASE_*_REPORT.md 
+AUDIT_REPORT.md
+VISUAL_QA_REPORT.md
