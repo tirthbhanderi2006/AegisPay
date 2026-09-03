@@ -248,3 +248,16 @@ export interface DisputeDetail {
   created_at: string;
   [key: string]: any;
 }
+
+export interface PaymentLifecycleEvent {
+  event_id: string;
+  transaction_id: string;
+  merchant_id: string;
+  event_type: string;
+  timestamp: string;
+  payload: Record<string, any>;
+  processed: boolean;
+  idempotent_replay: boolean;
+  received_at?: string;
+}
+

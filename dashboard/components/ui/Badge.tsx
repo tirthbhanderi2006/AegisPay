@@ -1,64 +1,190 @@
 "use client";
 
-import { type HTMLAttributes, type ReactNode } from "react";
+import React from "react";
 import { clsx } from "clsx";
+import type { DecisionAction, RiskLevel } from "@/lib/types";
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "success" | "warning" | "danger" | "info" | "neutral" | "gold";
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?: "default" | "neutral" | "info" | "success" | "warning" | "danger" | "accent" | "gold";
   size?: "sm" | "md" | "lg";
   dot?: boolean;
-  icon?: ReactNode;
+  children: React.ReactNode;
 }
 
-const variantStyles = {
-  default: "bg-surface-overlay text-ink-muted border border-line",
-  success: "bg-emerald/15 text-emerald-light border border-emerald/30",
-  warning: "bg-amber/15 text-amber-light border border-amber/30",
-  danger: "bg-red/15 text-red-light border border-red/30",
-  info: "bg-azure/15 text-azure-light border border-azure/30",
-  neutral: "bg-surface-overlay text-ink-muted border border-line",
-  gold: "bg-gold/15 text-gold-light border border-gold/30",
-};
-
-const sizeStyles = {
-  sm: "px-2 py-0.5 text-xs gap-1",
-  md: "px-2.5 py-1 text-sm gap-1.5",
-  lg: "px-3 py-1.5 text-base gap-2",
-};
-
-const dotColors = {
-  default: "bg-ink-muted",
-  success: "bg-emerald",
-  warning: "bg-amber",
-  danger: "bg-red",
-  info: "bg-azure",
-  neutral: "bg-ink-muted",
-  gold: "bg-gold",
-};
-
 export function Badge({
-  children,
   variant = "default",
   size = "md",
   dot = false,
-  icon,
   className,
+  children,
   ...props
 }: BadgeProps) {
+  const variantStyles = {
+    default: "bg-surface-subtle text-ink-secondary border border-line",
+    neutral: "bg-surface-subtle text-ink-muted border border-line",
+    info: "bg-accent-subtle text-accent border border-accent-line",
+    accent: "bg-accent text-white border border-accent",
+    success: "bg-emerald-bg text-emerald border border-emerald-border",
+    warning: "bg-amber-bg text-amber border border-amber-border",
+    danger: "bg-red-bg text-red border border-red-border",
+    gold: "bg-amber-bg text-amber border border-amber-border",
+  };
+
+  const sizeStyles = {
+    sm: "px-1.5 py-0.5 text-[10px] font-mono",
+    md: "px-2 py-0.5 text-xs font-mono",
+    lg: "px-2.5 py-1 text-xs font-mono",
+  };
+
+  const dotColors = {
+    default: "bg-ink-muted",
+    neutral: "bg-ink-muted",
+    info: "bg-accent",
+    accent: "bg-white",
+    success: "bg-emerald",
+    warning: "bg-amber",
+    danger: "bg-red",
+    gold: "bg-amber",
+  };
+
   return (
     <span
       className={clsx(
-        "inline-flex items-center font-medium rounded-full",
-        "transition-colors duration-150",
+        "inline-flex items-center gap-1.5 rounded font-medium transition-colors select-none",
         variantStyles[variant],
         sizeStyles[size],
         className
       )}
       {...props}
     >
-      {dot && <span className={clsx("w-1.5 h-1.5 rounded-full", dotColors[variant])} aria-hidden="true" />}
-      {icon && <span className="flex-shrink-0" aria-hidden="true">{icon}</span>}
-      <span>{children}</span>
+      {dot && (
+        <span
+          className={clsx("w-1.5 h-1.5 rounded-full flex-shrink-0", dotColors[variant])}
+          aria-hidden="true"
+        />
+      )}
+      {children}
+    </span>
+  );
+}
+
+export function DecisionBadge({
+  decision,
+  size = "md",
+  className,
+}: {
+  decision: DecisionAction | string;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const styles: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    ALLOW: {
+      bg: "bg-emerald-bg",
+      text: "text-emerald",
+      border: "border-emerald-border",
+      label: "ALLOW",
+    },
+    CHALLENGE: {
+      bg: "bg-amber-bg",
+      text: "text-amber",
+      border: "border-amber-border",
+      label: "CHALLENGE",
+    },
+    BLOCK: {
+      bg: "bg-red-bg",
+      text: "text-red",
+      border: "border-red-border",
+      label: "BLOCK",
+    },
+    MANUAL_HOLD: {
+      bg: "bg-surface-subtle",
+      text: "text-ink-secondary",
+      border: "border-line",
+      label: "MANUAL HOLD",
+    },
+  };
+
+  const current = styles[decision] || {
+    bg: "bg-surface-subtle",
+    text: "text-ink-muted",
+    border: "border-line",
+    label: decision,
+  };
+
+  const sizeClasses = {
+    sm: "px-1.5 py-0.5 text-[10px]",
+    md: "px-2 py-0.5 text-xs",
+    lg: "px-3 py-1 text-xs font-semibold",
+  };
+
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1.5 rounded font-mono font-bold uppercase tracking-wider border",
+        current.bg,
+        current.text,
+        current.border,
+        sizeClasses[size],
+        className
+      )}
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+      {current.label}
+    </span>
+  );
+}
+
+export function RiskLevelBadge({
+  level,
+  size = "md",
+  className,
+}: {
+  level: RiskLevel | string;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const styles: Record<string, { bg: string; text: string; border: string }> = {
+    LOW: {
+      bg: "bg-emerald-bg",
+      text: "text-emerald",
+      border: "border-emerald-border",
+    },
+    MEDIUM: {
+      bg: "bg-amber-bg",
+      text: "text-amber",
+      border: "border-amber-border",
+    },
+    HIGH: {
+      bg: "bg-red-bg",
+      text: "text-red",
+      border: "border-red-border",
+    },
+  };
+
+  const current = styles[level] || {
+    bg: "bg-surface-subtle",
+    text: "text-ink-muted",
+    border: "border-line",
+  };
+
+  const sizeClasses = {
+    sm: "px-1.5 py-0.5 text-[10px]",
+    md: "px-2 py-0.5 text-xs",
+    lg: "px-2.5 py-1 text-xs font-semibold",
+  };
+
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center rounded font-mono font-semibold uppercase tracking-wider border",
+        current.bg,
+        current.text,
+        current.border,
+        sizeClasses[size],
+        className
+      )}
+    >
+      {level} RISK
     </span>
   );
 }
@@ -68,79 +194,29 @@ export function StatusBadge({
   size = "md",
   className,
 }: {
-  status?: string;
+  status: "operational" | "degraded" | "unavailable" | "healthy" | "unhealthy" | "active" | "revoked" | string;
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const configMap: Record<string, { variant: "default" | "success" | "warning" | "danger" | "info" | "neutral" | "gold"; label: string; dot?: boolean }> = {
-    operational: { variant: "success", label: "OPERATIONAL", dot: true },
-    healthy: { variant: "success", label: "HEALTHY", dot: true },
-    success: { variant: "success", label: "SUCCESS", dot: true },
-    active: { variant: "success", label: "ACTIVE", dot: true },
-    completed: { variant: "success", label: "COMPLETED", dot: false },
-    processed: { variant: "success", label: "PROCESSED", dot: true },
-    already_processed_idempotent: { variant: "info", label: "IDEMPOTENT", dot: true },
-    degraded: { variant: "warning", label: "DEGRADED", dot: true },
-    warning: { variant: "warning", label: "WARNING", dot: true },
-    pending: { variant: "info", label: "PENDING", dot: true },
-    unavailable: { variant: "danger", label: "UNAVAILABLE", dot: true },
-    unhealthy: { variant: "danger", label: "UNHEALTHY", dot: true },
-    failed: { variant: "danger", label: "FAILED", dot: true },
-    revoked: { variant: "neutral", label: "REVOKED", dot: false },
-  };
+  const isHealthy = ["operational", "healthy", "active", "success", "processed"].includes(status.toLowerCase());
+  const isDegraded = ["degraded", "warning", "pending", "already_processed_idempotent"].includes(status.toLowerCase());
 
-  const config = (status && configMap[status.toLowerCase()]) || {
-    variant: "default" as const,
-    label: (status || "UNKNOWN").toUpperCase().replace(/_/g, " "),
-    dot: false,
-  };
+  const style = isHealthy
+    ? "bg-emerald-bg text-emerald border-emerald-border"
+    : isDegraded
+    ? "bg-amber-bg text-amber border-amber-border"
+    : "bg-red-bg text-red border-red-border";
 
-  return <Badge variant={config.variant} size={size} dot={config.dot} className={className}>{config.label}</Badge>;
-}
-
-export function DecisionBadge({
-  decision,
-  size = "md",
-  className,
-}: {
-  decision?: string;
-  size?: "sm" | "md" | "lg";
-  className?: string;
-}) {
-  const configMap: Record<string, { variant: "default" | "success" | "warning" | "danger" | "info" | "neutral" | "gold"; label: string }> = {
-    ALLOW: { variant: "success", label: "ALLOW" },
-    CHALLENGE: { variant: "warning", label: "CHALLENGE" },
-    BLOCK: { variant: "danger", label: "BLOCK" },
-    MANUAL_HOLD: { variant: "info", label: "MANUAL HOLD" },
-  };
-
-  const config = (decision && configMap[decision.toUpperCase()]) || {
-    variant: "neutral" as const,
-    label: decision || "UNKNOWN",
-  };
-
-  return <Badge variant={config.variant} size={size} className={className}>{config.label}</Badge>;
-}
-
-export function RiskLevelBadge({
-  level,
-  size = "md",
-  className,
-}: {
-  level?: string;
-  size?: "sm" | "md" | "lg";
-  className?: string;
-}) {
-  const configMap: Record<string, { variant: "default" | "success" | "warning" | "danger" | "info" | "neutral" | "gold"; label: string }> = {
-    LOW: { variant: "success", label: "LOW" },
-    MEDIUM: { variant: "warning", label: "MEDIUM" },
-    HIGH: { variant: "danger", label: "HIGH" },
-  };
-
-  const config = (level && configMap[level.toUpperCase()]) || {
-    variant: "neutral" as const,
-    label: level || "UNKNOWN",
-  };
-
-  return <Badge variant={config.variant} size={size} className={className}>{config.label}</Badge>;
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1.5 rounded font-mono font-semibold text-[10px] uppercase tracking-wider border px-2 py-0.5",
+        style,
+        className
+      )}
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+      {status.replace(/_/g, " ")}
+    </span>
+  );
 }

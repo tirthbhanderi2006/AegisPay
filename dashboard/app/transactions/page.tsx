@@ -2,153 +2,152 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { clsx } from "clsx";
 import {
   Search,
   Filter,
   Download,
-  RefreshCw,
-  SlidersHorizontal,
+  RotateCcw,
   ArrowRight,
   Shield,
+  Clock,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
-import { Card, Badge, Table, Button, Input, Select, Pagination, DecisionBadge, RiskLevelBadge } from "@/components/ui";
+import {
+  Card,
+  Badge,
+  Button,
+  Input,
+  Select,
+  Table,
+  Pagination,
+  DecisionBadge,
+  RiskLevelBadge,
+} from "@/components/ui";
 import { MainLayout } from "@/components/layout";
+import { PrivacyToken } from "@/components/security/PrivacyToken";
+import { useRBAC } from "@/lib/rbac";
+import type { RiskEvaluationResponse, DecisionAction, RiskLevel } from "@/lib/types";
 
-const BASE_TRANSACTIONS = [
+const INITIAL_TRANSACTIONS: RiskEvaluationResponse[] = [
   {
-    id: "txn_001",
+    transaction_id: "txn_001",
+    decision_id: "dec_txn_001_1787823879",
     decision: "BLOCK",
-    score: 91.4,
-    level: "HIGH",
-    quality: 0.94,
-    signals: 3,
-    latency: 4.7,
-    time: "14:31:02",
-    date: "2026-08-29",
-    amount: "$830.00",
-    signalsList: ["payment_velocity", "device_reuse_cross_merchant", "amount_deviation"],
+    risk_score: 0.914,
+    risk_level: "HIGH",
+    evidence_quality: 0.94,
+    signals: [
+      { name: "payment_velocity", severity: "high", value: 12, contribution: 0.35, description: "12 rapid payment attempts within 2m window." },
+      { name: "behavioral_deviation", severity: "high", value: 0.87, contribution: 0.28, description: "Cadence deviates >3.4σ from legitimate customer baseline." },
+    ],
+    explanation: [
+      "Elevated transaction velocity observed (12 attempts in 2m window).",
+      "Behavioral interaction cadence deviates >3.4σ from legitimate customer baseline.",
+    ],
+    versions: { calibration: "cal_v1.4", policy: "policy_v2.1", graph_snapshot: "graph-live", schema_version: "features_v3" },
+    audit: { snapshot_id: "snap_txn_001", decision_hash: "a4f891b2c3d4e5f67890123456789abcdefa4f891b2c3d4e5f67890123456789abc", recorded: true },
+    calibration_version: "cal_v1.4",
+    request_id: "req_001_live",
+    latency_ms: 4.7,
+    created_at: "2026-08-29T14:31:02Z",
   },
   {
-    id: "txn_vel_9021",
+    transaction_id: "txn_vel_9021",
+    decision_id: "dec_txn_vel_9021_1787823850",
     decision: "CHALLENGE",
-    score: 58.4,
-    level: "MEDIUM",
-    quality: 0.85,
-    signals: 2,
-    latency: 4.1,
-    time: "14:30:12",
-    date: "2026-08-29",
-    amount: "$249.99",
-    signalsList: ["velocity_burst_burst", "geolocation_distance"],
+    risk_score: 0.584,
+    risk_level: "MEDIUM",
+    evidence_quality: 0.89,
+    signals: [
+      { name: "cadence_jitter", severity: "medium", value: 0.54, contribution: 0.22, description: "Unusual typing cadence observed on checkout form." },
+    ],
+    explanation: ["Moderate behavioral deviation; step-up 3DS authentication requested."],
+    versions: { calibration: "cal_v1.4", policy: "policy_v2.1", graph_snapshot: "graph-live", schema_version: "features_v3" },
+    audit: { snapshot_id: "snap_txn_vel_9021", decision_hash: "5b129cd871239847129837192837129837198273918273918273918273918273", recorded: true },
+    calibration_version: "cal_v1.4",
+    request_id: "req_vel_9021",
+    latency_ms: 3.8,
+    created_at: "2026-08-29T14:30:12Z",
   },
   {
-    id: "txn_demo_norm",
+    transaction_id: "txn_demo_norm",
+    decision_id: "dec_txn_demo_norm_1787823810",
     decision: "ALLOW",
-    score: 12.3,
-    level: "LOW",
-    quality: 0.98,
-    signals: 0,
-    latency: 3.2,
-    time: "14:28:45",
-    date: "2026-08-29",
-    amount: "$42.50",
-    signalsList: [],
+    risk_score: 0.082,
+    risk_level: "LOW",
+    evidence_quality: 0.98,
+    signals: [],
+    explanation: ["Low-risk domestic transaction conforming to historical pattern."],
+    versions: { calibration: "cal_v1.4", policy: "policy_v2.1", graph_snapshot: "graph-live", schema_version: "features_v3" },
+    audit: { snapshot_id: "snap_txn_demo_norm", decision_hash: "7f891a2b3c4d5e6f7a8b9c0d1e2f3a4b7f891a2b3c4d5e6f7a8b9c0d1e2f3a4b", recorded: true },
+    calibration_version: "cal_v1.4",
+    request_id: "req_norm_01",
+    latency_ms: 2.9,
+    created_at: "2026-08-29T14:28:44Z",
   },
   {
-    id: "txn_graph_degrade",
-    decision: "CHALLENGE",
-    score: 62.0,
-    level: "MEDIUM",
-    quality: 0.70,
-    signals: 1,
-    latency: 4.8,
-    time: "14:26:01",
-    date: "2026-08-29",
-    amount: "$1,200.00",
-    signalsList: ["high_amount_burst"],
-  },
-  {
-    id: "txn_hold_audit",
+    transaction_id: "txn_hold_audit",
+    decision_id: "dec_txn_hold_audit_1787823790",
     decision: "MANUAL_HOLD",
-    score: 68.9,
-    level: "MEDIUM",
-    quality: 0.82,
-    signals: 2,
-    latency: 5.1,
-    time: "14:22:15",
-    date: "2026-08-29",
-    amount: "$4,500.00",
-    signalsList: ["high_ticket_probe", "new_account_risk"],
+    risk_score: 0.689,
+    risk_level: "MEDIUM",
+    evidence_quality: 0.72,
+    signals: [
+      { name: "high_ticket_novel_geo", severity: "medium", value: 4500, contribution: 0.25, description: "High ticket cross-border checkout." },
+    ],
+    explanation: ["High-ticket international order requires secondary compliance review."],
+    versions: { calibration: "cal_v1.4", policy: "policy_v2.1", graph_snapshot: "graph-live", schema_version: "features_v3" },
+    audit: { snapshot_id: "snap_txn_hold_audit", decision_hash: "8e8ec6c7d1bd02e7fe9d2b535b92ce993a4cfacbb228b8ec2cf018df8161ecbb", recorded: true },
+    calibration_version: "cal_v1.4",
+    request_id: "req_hold_audit",
+    latency_ms: 4.1,
+    created_at: "2026-08-29T14:22:15Z",
   },
-];
-
-// Generate synthetic list for high-density operational exploration
-const EXTENDED_TRANSACTIONS = [
-  ...BASE_TRANSACTIONS,
-  ...Array.from({ length: 45 }, (_, i) => {
-    const num = i + 6;
-    const isHigh = i % 5 === 0;
-    const isMed = i % 3 === 0 && !isHigh;
-    const dec = isHigh ? "BLOCK" : isMed ? "CHALLENGE" : "ALLOW";
-    const lvl = isHigh ? "HIGH" : isMed ? "MEDIUM" : "LOW";
-    const score = isHigh ? 82.0 + (i % 15) : isMed ? 48.0 + (i % 20) : 8.0 + (i % 25);
-    return {
-      id: `txn_${String(num).padStart(4, "0")}`,
-      decision: dec,
-      score: Math.round(score * 10) / 10,
-      level: lvl,
-      quality: Math.round((0.85 + (i % 15) * 0.01) * 100) / 100,
-      signals: isHigh ? 3 : isMed ? 2 : 0,
-      latency: Math.round((3.2 + (i % 20) * 0.1) * 10) / 10,
-      time: `14:${String(20 - Math.floor(i / 3)).padStart(2, "0")}:${String((i * 13) % 60).padStart(2, "0")}`,
-      date: "2026-08-29",
-      amount: `$${((i + 1) * 37.5).toFixed(2)}`,
-      signalsList: isHigh ? ["payment_velocity", "device_reuse"] : isMed ? ["amount_deviation"] : [],
-    };
-  }),
 ];
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const { merchantId } = useRBAC();
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [decisionFilter, setDecisionFilter] = useState<string>("all");
-  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [decisionFilter, setDecisionFilter] = useState("all");
+  const [riskLevelFilter, setRiskLevelFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
 
   const filteredData = useMemo(() => {
-    return EXTENDED_TRANSACTIONS.filter((txn) => {
-      const matchesSearch =
-        txn.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.amount.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesDecision = decisionFilter === "all" || txn.decision === decisionFilter;
-      const matchesLevel = levelFilter === "all" || txn.level === levelFilter;
-      return matchesSearch && matchesDecision && matchesLevel;
+    return INITIAL_TRANSACTIONS.filter((txn) => {
+      const matchSearch =
+        txn.transaction_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        txn.decision_id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchDecision = decisionFilter === "all" || txn.decision as string === decisionFilter;
+      const matchRiskLevel = riskLevelFilter === "all" || txn.risk_level as string === riskLevelFilter;
+      return matchSearch && matchDecision && matchRiskLevel;
     });
-  }, [searchQuery, decisionFilter, levelFilter]);
+  }, [searchQuery, decisionFilter, riskLevelFilter]);
 
-  const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredData.slice(start, start + pageSize);
-  }, [filteredData, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredData.length / pageSize);
-
-  const handleRowClick = (txn: any) => {
-    router.push(`/investigations/${txn.id}`);
-  };
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 select-text">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
           <div>
-            <h1 className="text-2xl font-bold text-ink">Transactions Explorer</h1>
-            <p className="text-xs text-ink-muted mt-1">
-              Deterministic real-time evaluation logs, decision breakdowns, and investigation dossiers
-            </p>
+            <div className="flex items-center gap-2 font-mono text-xs text-ink-muted">
+              <span>LEDGER</span>
+              <span>/</span>
+              <span className="font-bold text-ink">{merchantId}</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink mt-0.5">
+              Evaluated Transaction Ledger
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -156,164 +155,145 @@ export default function TransactionsPage() {
               variant="outline"
               size="sm"
               leftIcon={<Download className="w-3.5 h-3.5" />}
-              onClick={() => alert("Exporting evaluation logs as CSV...")}
+              onClick={() => alert("Exporting transactions ledger...")}
             >
               Export CSV
             </Button>
           </div>
         </div>
 
-        {/* Filter Controls */}
+        {/* Filter Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <Input
-            placeholder="Search by txn_id or amount..."
+            placeholder="Search txn_id or dec_id..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             leftIcon={<Search className="w-4 h-4 text-ink-muted" />}
           />
 
           <Select
-            value={decisionFilter}
             options={[
               { value: "all", label: "All Decisions" },
-              { value: "ALLOW", label: "ALLOW Only" },
-              { value: "CHALLENGE", label: "CHALLENGE Only" },
-              { value: "BLOCK", label: "BLOCK Only" },
-              { value: "MANUAL_HOLD", label: "MANUAL HOLD Only" },
+              { value: "ALLOW", label: "ALLOW" },
+              { value: "CHALLENGE", label: "CHALLENGE" },
+              { value: "BLOCK", label: "BLOCK" },
+              { value: "MANUAL_HOLD", label: "MANUAL_HOLD" },
             ]}
-            onChange={(e) => {
-              setDecisionFilter(e.target.value);
-              setCurrentPage(1);
-            }}
+            value={decisionFilter}
+            onChange={(e) => setDecisionFilter(e.target.value)}
           />
 
           <Select
-            value={levelFilter}
             options={[
               { value: "all", label: "All Risk Levels" },
-              { value: "LOW", label: "LOW Risk" },
-              { value: "MEDIUM", label: "MEDIUM Risk" },
-              { value: "HIGH", label: "HIGH Risk" },
+              { value: "LOW", label: "LOW RISK" },
+              { value: "MEDIUM", label: "MEDIUM RISK" },
+              { value: "HIGH", label: "HIGH RISK" },
             ]}
-            onChange={(e) => {
-              setLevelFilter(e.target.value);
-              setCurrentPage(1);
-            }}
+            value={riskLevelFilter}
+            onChange={(e) => setRiskLevelFilter(e.target.value)}
           />
 
-          <div className="flex items-center justify-end text-xs font-mono text-ink-muted">
-            <span>{filteredData.length} records matched</span>
+          <div className="flex items-center justify-end font-mono text-xs text-ink-muted">
+            <span>{filteredData.length} records found</span>
           </div>
         </div>
 
-        {/* High-density Operational Table */}
-        <Card variant="raised" padding="none">
+        {/* High-density Ledger Table */}
+        <Card variant="flat" padding="none" className="border">
           <Table
             columns={[
               {
-                key: "id",
-                header: "Transaction ID",
-                render: (row) => (
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-gold font-bold">{row.id}</span>
+                key: "transaction_id",
+                header: "Transaction Ref",
+                render: (row: RiskEvaluationResponse) => (
+                  <div>
+                    <span className="font-mono text-xs font-semibold text-ink block">
+                      {row.transaction_id}
+                    </span>
+                    <span className="font-mono text-[10px] text-ink-faint">
+                      {row.request_id}
+                    </span>
                   </div>
                 ),
               },
               {
-                key: "amount",
-                header: "Amount",
-                render: (row) => <span className="font-mono text-xs text-ink font-semibold">{row.amount}</span>,
-              },
-              {
                 key: "decision",
                 header: "Decision",
-                width: "120px",
-                render: (row) => <DecisionBadge decision={row.decision as any} size="sm" />,
+                align: "center",
+                render: (row: RiskEvaluationResponse) => (
+                  <DecisionBadge decision={row.decision} size="sm" />
+                ),
               },
               {
-                key: "score",
+                key: "risk_score",
                 header: "Risk Score",
                 align: "center",
-                width: "100px",
-                render: (row) => (
-                  <span className="font-mono text-xs font-bold text-ink">{row.score.toFixed(1)}</span>
-                ),
-              },
-              {
-                key: "level",
-                header: "Risk Level",
-                align: "center",
-                width: "100px",
-                render: (row) => <RiskLevelBadge level={row.level as any} size="sm" />,
-              },
-              {
-                key: "quality",
-                header: "Evidence Quality",
-                align: "center",
-                width: "130px",
-                render: (row) => (
-                  <span className="font-mono text-xs text-ink-muted">{row.quality.toFixed(2)}</span>
-                ),
-              },
-              {
-                key: "signals",
-                header: "Signals",
-                align: "center",
-                width: "90px",
-                render: (row) => (
-                  <span
-                    className={clsx(
-                      "px-2 py-0.5 rounded text-xs font-mono font-bold",
-                      row.signals > 0 ? "bg-red/10 text-red" : "text-ink-faint"
-                    )}
-                  >
-                    {row.signals} signals
+                render: (row: RiskEvaluationResponse) => (
+                  <span className="font-mono text-xs font-bold text-ink">
+                    {(row.risk_score <= 1.0 ? row.risk_score * 100 : row.risk_score).toFixed(1)}
                   </span>
                 ),
               },
               {
-                key: "latency",
+                key: "risk_level",
+                header: "Severity",
+                align: "center",
+                render: (row: RiskEvaluationResponse) => (
+                  <RiskLevelBadge level={row.risk_level} size="sm" />
+                ),
+              },
+              {
+                key: "evidence_quality",
+                header: "Evidence",
+                align: "center",
+                render: (row: RiskEvaluationResponse) => (
+                  <span className="font-mono text-xs text-emerald font-semibold">
+                    {(row.evidence_quality * 100).toFixed(0)}%
+                  </span>
+                ),
+              },
+              {
+                key: "latency_ms",
                 header: "Latency",
                 align: "right",
-                width: "100px",
-                render: (row) => (
-                  <span className="font-mono text-xs text-ink-muted">{row.latency.toFixed(1)}ms</span>
+                render: (row: RiskEvaluationResponse) => (
+                  <span className="font-mono text-xs text-ink-muted">
+                    {row.latency_ms.toFixed(1)}ms
+                  </span>
                 ),
               },
               {
-                key: "time",
-                header: "Timestamp",
+                key: "actions",
+                header: "Action",
                 align: "right",
-                width: "140px",
-                render: (row) => (
-                  <span className="font-mono text-xs text-ink-faint">
-                    {row.date} {row.time}
-                  </span>
+                render: (row: RiskEvaluationResponse) => (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/investigations/${row.transaction_id}`);
+                    }}
+                    rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                    className="h-7 text-xs"
+                  >
+                    Investigate
+                  </Button>
                 ),
               },
             ]}
             data={paginatedData}
-            keyExtractor={(row) => row.id}
-            onRowClick={handleRowClick}
-            rowClassName={(row) =>
-              clsx(
-                "cursor-pointer hover:bg-surface-overlay/60 transition-colors",
-                row.decision === "BLOCK" && "bg-red/5 hover:bg-red/10",
-                row.decision === "CHALLENGE" && "bg-amber/5 hover:bg-amber/10"
-              )
-            }
+            keyExtractor={(row) => row.transaction_id}
+            onRowClick={(row) => router.push(`/investigations/${row.transaction_id}`)}
+            rowClassName={() => "cursor-pointer hover:bg-surface-subtle transition-colors"}
           />
-
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
-            showPageSize={false}
-            pageSize={pageSize}
             totalItems={filteredData.length}
+            itemsPerPage={itemsPerPage}
           />
         </Card>
       </div>

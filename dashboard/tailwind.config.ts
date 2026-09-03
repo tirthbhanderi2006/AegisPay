@@ -6,199 +6,138 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Light-First Design System
+        canvas: "#FBFBFA", // warm off-white page canvas
         surface: {
-          DEFAULT: "#0F172A",
-          raised: "#1E293B",
-          overlay: "#1A1E2F",
-        },
-        surfaceLight: {
-          DEFAULT: "#F7F9FB",
-          raised: "#FFFFFF",
-          overlay: "#EEF2F6",
+          DEFAULT: "#FFFFFF", // pure white surface
+          subtle: "#F6F6F4", // subtle secondary surface
+          muted: "#EFEFED", // muted container surface
+          hover: "#F3F3F1", // interaction hover
         },
         line: {
-          DEFAULT: "#334155",
-          strong: "#475569",
-        },
-        lineLight: {
-          DEFAULT: "#E3E9EF",
-          strong: "#C9D4DE",
+          DEFAULT: "#E5E5E3", // hairline border
+          strong: "#D4D4D0", // stronger dividing line
+          subtle: "#EFEFEF", // ultra-light line
         },
         ink: {
-          DEFAULT: "#F8FAFC",
-          muted: "#94A3B8",
-          faint: "#64748B",
+          DEFAULT: "#111110", // near-black primary typography
+          secondary: "#5A5A57", // graphite secondary typography
+          muted: "#767672", // muted body typography
+          faint: "#A3A39E", // faint metadata typography
+          inverted: "#FFFFFF",
         },
-        inkLight: {
-          DEFAULT: "#101B2D",
-          muted: "#4E6178",
-          faint: "#8CA0B3",
+        // Restrained Decision & Accent Tokens
+        accent: {
+          DEFAULT: "#0F52BA", // restrained cobalt/blue accent
+          hover: "#0D459D",
+          subtle: "#EFF6FF",
+          line: "#BFDBFE",
         },
-        gold: {
-          DEFAULT: "#F59E0B",
-          light: "#FBBF24",
-          dark: "#D97706",
+        // Restrained Decision Colors
+        decision: {
+          allow: "#15803D", // restrained emerald
+          allowBg: "#F0FDF4",
+          allowLine: "#BBF7D0",
+          challenge: "#B45309", // restrained amber
+          challengeBg: "#FFFBEB",
+          challengeLine: "#FDE68A",
+          block: "#B91C1C", // restrained red
+          blockBg: "#FEF2F2",
+          blockLine: "#FECACA",
+          hold: "#334155", // restrained dark slate
+          holdBg: "#F8FAFC",
+          holdLine: "#E2E8F0",
         },
-        purple: {
-          DEFAULT: "#8B5CF6",
-          light: "#A78BFA",
-          dark: "#7C3AED",
-        },
+        // Semantic Utilities
         emerald: {
-          DEFAULT: "#059669",
-          light: "#10B981",
-          dark: "#047857",
+          DEFAULT: "#15803D",
+          light: "#22C55E",
+          dark: "#166534",
+          bg: "#F0FDF4",
+          border: "#BBF7D0",
         },
         amber: {
-          DEFAULT: "#D97706",
+          DEFAULT: "#B45309",
           light: "#F59E0B",
-          dark: "#B45309",
+          dark: "#92400E",
+          bg: "#FFFBEB",
+          border: "#FDE68A",
         },
         red: {
-          DEFAULT: "#DC2626",
+          DEFAULT: "#B91C1C",
           light: "#EF4444",
-          dark: "#B91C1C",
+          dark: "#991B1B",
+          bg: "#FEF2F2",
+          border: "#FECACA",
         },
         azure: {
-          DEFAULT: "#2563EB",
-          light: "#3B82F6",
-          dark: "#1D4ED8",
+          DEFAULT: "#0F52BA",
+          light: "#2563EB",
+          dark: "#1E40AF",
+          bg: "#EFF6FF",
+          border: "#BFDBFE",
         },
       },
       fontFamily: {
-        sans: [
-          "IBM Plex Sans",
+        display: [
+          "Clash Display",
+          "Syne",
+          "Satoshi",
+          "Inter",
+          "sans-serif",
+        ],
+        satoshi: [
+          "Satoshi",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
           "Roboto",
-          "Helvetica Neue",
-          "Arial",
+          "sans-serif",
+        ],
+        editorial: [
+          "Instrument Serif",
+          "Newsreader",
+          "Playfair Display",
+          "Georgia",
+          "serif",
+        ],
+        serif: [
+          "Instrument Serif",
+          "Newsreader",
+          "Georgia",
+          "serif",
+        ],
+        sans: [
+          "Inter",
+          "Satoshi",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
           "sans-serif",
         ],
         mono: [
           "IBM Plex Mono",
-          "ui-monospace",
+          "Geist Mono",
           "SFMono-Regular",
           "Menlo",
           "Consolas",
-          "Liberation Mono",
           "monospace",
         ],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.12)",
-        pop: "0 12px 40px rgba(0,0,0,0.20)",
-        inner: "inset 0 1px 2px rgba(0,0,0,0.08)",
+        subtle: "0 1px 2px rgba(0, 0, 0, 0.04)",
+        card: "0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)",
+        pop: "0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)",
+        modal: "0 20px 40px -10px rgba(0, 0, 0, 0.12)",
       },
-      keyframes: {
-        "soft-pulse": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.55" },
-        },
-        "fade-up": {
-          from: { opacity: "0", transform: "translateY(6px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "slide-in": {
-          from: { opacity: "0", transform: "translateX(-8px)" },
-          to: { opacity: "1", transform: "translateX(0)" },
-        },
-        "scale-in": {
-          from: { opacity: "0", transform: "scale(0.95)" },
-          to: { opacity: "1", transform: "scale(1)" },
-        },
-        "pulse-ring": {
-          "0%": { transform: "scale(1)", opacity: "0.5" },
-          "100%": { transform: "scale(2)", opacity: "0" },
-        },
-        "flow": {
-          "0%": { strokeDashoffset: "0" },
-          "100%": { strokeDashoffset: "16" },
-        },
-      },
-      animation: {
-        "pulse-glow": "soft-pulse 1.4s ease-in-out infinite",
-        "fade-up": "fade-up 0.35s ease-out both",
-        "slide-in": "slide-in 0.3s ease-out both",
-        "scale-in": "scale-in 0.2s ease-out both",
-        "pulse-ring": "pulse-ring 1.5s ease-out infinite",
-        "flow": "flow 1s linear infinite",
-      },
-      transitionDuration: {
-        "0": "0ms",
-        "75": "75ms",
-        "100": "100ms",
-        "150": "150ms",
-        "200": "200ms",
-        "250": "250ms",
-        "300": "300ms",
-        "350": "350ms",
-        "400": "400ms",
-        "500": "500ms",
-        "700": "700ms",
-        "1000": "1000ms",
-      },
-      spacing: {
-        "0": "0",
-        "1": "0.25rem",
-        "2": "0.5rem",
-        "3": "0.75rem",
-        "4": "1rem",
-        "5": "1.25rem",
-        "6": "1.5rem",
-        "7": "1.75rem",
-        "8": "2rem",
-        "9": "2.25rem",
-        "10": "2.5rem",
-        "12": "3rem",
-        "14": "3.5rem",
-        "16": "4rem",
-        "20": "5rem",
-        "24": "6rem",
-        "28": "7rem",
-        "32": "8rem",
-        "36": "9rem",
-        "40": "10rem",
-        "44": "11rem",
-        "48": "12rem",
-        "52": "13rem",
-        "56": "14rem",
-        "60": "15rem",
-        "64": "16rem",
-        "72": "18rem",
-        "80": "20rem",
-        "96": "24rem",
-      },
-      fontSize: {
-        "xs": ["0.75rem", { lineHeight: "1.5", letterSpacing: "0.02em" }],
-        "sm": ["0.875rem", { lineHeight: "1.5", letterSpacing: "0.01em" }],
-        "base": ["1rem", { lineHeight: "1.5", letterSpacing: "0" }],
-        "lg": ["1.125rem", { lineHeight: "1.5", letterSpacing: "-0.01em" }],
-        "xl": ["1.25rem", { lineHeight: "1.4", letterSpacing: "-0.01em" }],
-        "2xl": ["1.5rem", { lineHeight: "1.3", letterSpacing: "-0.02em" }],
-        "3xl": ["1.875rem", { lineHeight: "1.2", letterSpacing: "-0.02em" }],
-        "4xl": ["2.25rem", { lineHeight: "1.1", letterSpacing: "-0.03em" }],
-        "5xl": ["3rem", { lineHeight: "1.05", letterSpacing: "-0.03em" }],
-        "6xl": ["3.75rem", { lineHeight: "1", letterSpacing: "-0.04em" }],
-      },
-      borderRadius: {
-        "none": "0",
-        "sm": "0.25rem",
-        "DEFAULT": "0.375rem",
-        "md": "0.5rem",
-        "lg": "0.75rem",
-        "xl": "1rem",
-        "2xl": "1.5rem",
-        "full": "9999px",
-      },
-      zIndex: {
-        "0": "0",
-        "10": "10",
-        "20": "20",
-        "30": "30",
-        "40": "40",
-        "50": "50",
+      letterSpacing: {
+        tighter: "-0.04em",
+        tight: "-0.02em",
+        normal: "0",
+        wide: "0.02em",
+        wider: "0.04em",
+        widest: "0.08em",
       },
     },
   },

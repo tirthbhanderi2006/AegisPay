@@ -1,55 +1,46 @@
 "use client";
 
 import React from "react";
-import { AlertTriangle, ShieldAlert } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 
-interface DegradationNoticeProps {
+export interface DegradationNoticeProps {
   notice?: string | null;
   evidenceQuality?: number;
   auditDegraded?: boolean;
+  className?: string;
 }
 
 export function DegradationNotice({
   notice,
   evidenceQuality,
-  auditDegraded,
+  auditDegraded = false,
+  className = "",
 }: DegradationNoticeProps) {
   if (!notice && !auditDegraded && (evidenceQuality === undefined || evidenceQuality >= 0.85)) {
     return null;
   }
 
   return (
-    <div className="p-4 rounded-xl bg-amber/10 border border-amber/30 text-ink space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber flex-shrink-0" />
-          <span className="font-semibold text-sm text-amber uppercase tracking-wider font-mono">
-            FAIL-SAFE DEGRADATION NOTICE
-          </span>
+    <div
+      className={`p-3.5 rounded border border-amber-border bg-amber-bg text-xs ${className}`}
+      role="alert"
+    >
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-semibold text-amber font-mono uppercase tracking-wider text-[11px]">
+            Controlled Dependency Degradation Active
+          </p>
+          <p className="text-ink-secondary leading-relaxed">
+            {notice ||
+              "One or more upstream dependencies (Entity Graph / FX / Audit) experienced latency degradation. Deterministic evaluation completed via controlled fallback policy."}
+          </p>
+          {evidenceQuality !== undefined && evidenceQuality < 0.85 && (
+            <div className="font-mono text-[10px] text-ink-muted">
+              Evidence Quality Index: <strong className="text-amber">{(evidenceQuality * 100).toFixed(0)}%</strong> (reduced from 100% baseline).
+            </div>
+          )}
         </div>
-        <Badge variant="warning" size="sm" dot>DEGRADED EVALUATION</Badge>
-      </div>
-
-      <p className="text-xs text-ink-muted leading-relaxed">
-        {notice ||
-          "One or more external intelligence dependencies were unreachable during evaluation. AegisPay applied controlled fallback heuristics and penalized evidence quality."}
-      </p>
-
-      <div className="pt-2 border-t border-amber/20 flex flex-wrap gap-4 text-xs font-mono">
-        {evidenceQuality !== undefined && (
-          <div>
-            <span className="text-ink-muted">Evidence Quality: </span>
-            <span className="text-amber font-bold">{evidenceQuality.toFixed(2)}</span>
-            <span className="text-ink-faint"> (Penalized)</span>
-          </div>
-        )}
-        {auditDegraded && (
-          <div>
-            <span className="text-ink-muted">Audit Persistence: </span>
-            <span className="text-red font-bold">VOLATILE (Degraded)</span>
-          </div>
-        )}
       </div>
     </div>
   );

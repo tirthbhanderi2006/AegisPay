@@ -1,116 +1,89 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import React from "react";
 import { clsx } from "clsx";
 
 export interface TabItem {
   value: string;
   label: string;
-  icon?: ReactNode;
+  icon?: React.ReactNode;
+  badge?: React.ReactNode;
   disabled?: boolean;
-  badge?: string | number;
-  children?: ReactNode;
 }
 
 export interface TabsProps {
   tabs: TabItem[];
   value: string;
   onChange: (value: string) => void;
-  variant?: "default" | "pills" | "underline";
+  variant?: "pills" | "line" | "segmented";
   fullWidth?: boolean;
   className?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
-export function Tabs({ tabs, value, onChange, variant = "default", fullWidth = false, className, children }: TabsProps) {
-  const variantStyles = {
-    default: "bg-surface-overlay p-1 rounded-lg",
-    pills: "",
-    underline: "border-b border-line",
-  };
-
-  const tabStyles = {
-    default:
-      "px-4 py-2 rounded-md text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-    pills:
-      "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-    underline:
-      "px-4 py-3 border-b-2 -mb-px text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-  };
-
-  const activeStyles = {
-    default: "bg-surface-raised text-ink shadow-sm",
-    pills: "bg-gold text-slate-950 shadow-sm",
-    underline: "border-gold text-gold",
-  };
-
-  const inactiveStyles = {
-    default: "text-ink-muted hover:text-ink hover:bg-surface-raised/50",
-    pills: "text-ink-muted hover:text-ink hover:bg-surface-overlay",
-    underline: "text-ink-muted hover:text-ink border-transparent",
-  };
-
+export function Tabs({
+  tabs,
+  value,
+  onChange,
+  variant = "line",
+  fullWidth = false,
+  className,
+  children,
+}: TabsProps) {
   return (
-    <div className={clsx("w-full", className)} role="tablist" aria-label="Tabs">
+    <div className={clsx("w-full space-y-3", className)}>
       <div
+        role="tablist"
         className={clsx(
-          "flex gap-1",
-          variantStyles[variant],
+          "flex items-center select-none",
+          variant === "line" && "border-b border-line gap-4",
+          variant === "pills" && "p-0.5 bg-surface-subtle border border-line rounded-lg gap-1",
+          variant === "segmented" && "p-1 bg-surface-subtle rounded border border-line gap-1",
           fullWidth && "w-full"
         )}
       >
-        {tabs.map((tab) => (
-          <button
-            key={tab.value}
-            role="tab"
-            aria-selected={value === tab.value}
-            aria-controls={`panel-${tab.value}`}
-            id={`tab-${tab.value}`}
-            onClick={() => !tab.disabled && onChange(tab.value)}
-            disabled={tab.disabled}
-            className={clsx(
-              "flex items-center gap-2 whitespace-nowrap",
-              tabStyles[variant],
-              value === tab.value ? activeStyles[variant] : inactiveStyles[variant],
-              tab.disabled && "opacity-50 cursor-not-allowed",
-              fullWidth && "flex-1 justify-center"
-            )}
-          >
-            {tab.icon && <span className="flex-shrink-0" aria-hidden="true">{tab.icon}</span>}
-            {tab.label}
-            {tab.badge && (
-              <span
-                className={clsx(
-                  "px-1.5 py-0.5 text-xs font-medium rounded-full",
-                  value === tab.value
-                    ? variant === "underline"
-                      ? "bg-gold/20 text-gold"
-                      : "bg-white/20 text-slate-950"
-                    : "bg-surface text-ink-muted"
-                )}
-              >
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const isActive = value === tab.value;
+
+          return (
+            <button
+              key={tab.value}
+              role="tab"
+              aria-selected={isActive}
+              disabled={tab.disabled}
+              onClick={() => onChange(tab.value)}
+              className={clsx(
+                "inline-flex items-center justify-center font-sans transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                variant === "line" && [
+                  "pb-2.5 pt-1 text-xs font-medium border-b-2 -mb-px",
+                  isActive
+                    ? "border-accent text-accent font-semibold"
+                    : "border-transparent text-ink-muted hover:text-ink hover:border-line-strong",
+                ],
+                variant === "pills" && [
+                  "px-3 py-1 text-xs font-medium rounded-md",
+                  isActive
+                    ? "bg-surface text-ink font-semibold shadow-subtle border border-line"
+                    : "text-ink-muted hover:text-ink",
+                ],
+                variant === "segmented" && [
+                  "px-3 py-1 text-xs rounded",
+                  isActive
+                    ? "bg-surface text-ink font-semibold shadow-subtle"
+                    : "text-ink-muted hover:text-ink",
+                ],
+                fullWidth && "flex-1"
+              )}
+            >
+              {tab.icon && <span className="mr-1.5 flex-shrink-0">{tab.icon}</span>}
+              <span>{tab.label}</span>
+              {tab.badge && <span className="ml-1.5">{tab.badge}</span>}
+            </button>
+          );
+        })}
       </div>
-      {children ? (
-        <div className="mt-4 animate-in">{children}</div>
-      ) : (
-        tabs.map((tab) => (
-          <div
-            key={`panel-${tab.value}`}
-            role="tabpanel"
-            id={`panel-${tab.value}`}
-            aria-labelledby={`tab-${tab.value}`}
-            hidden={value !== tab.value}
-            className="mt-4 animate-in"
-          >
-            {value === tab.value && tab.children}
-          </div>
-        ))
-      )}
+
+      {children && <div>{children}</div>}
     </div>
   );
 }
