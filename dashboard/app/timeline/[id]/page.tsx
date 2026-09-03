@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
 import { clsx } from "clsx";
 import {
   ChevronLeft,
@@ -60,11 +59,7 @@ export default function TimelinePage() {
     <MainLayout>
       <div className="p-4 lg:p-6 space-y-6">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => window.history.back()} aria-label="Back">
               <ChevronLeft className="w-5 h-5" />
@@ -78,17 +73,12 @@ export default function TimelinePage() {
             <DecisionBadge decision="BLOCK" size="lg" />
             <RiskLevelBadge level="HIGH" size="lg" />
           </div>
-        </motion.div>
+        </div>
 
         {/* AS_OF Selector */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center gap-4 p-4 bg-surface-overlay/50 rounded-xl border border-line"
-        >
+        <div className="flex items-center gap-4 p-4 bg-surface-subtle rounded-xl border border-line">
           <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-gold" />
+            <Clock className="w-5 h-5 text-accent" />
             <div>
               <p className="text-[10px] font-medium text-ink-muted uppercase tracking-wider">AS_OF TIMESTAMP</p>
               <p className="font-mono text-ink">Only events T ≤ as_of are visible</p>
@@ -98,52 +88,37 @@ export default function TimelinePage() {
             type="datetime-local"
             value={asOf.slice(0, 16)}
             onChange={(e) => setAsOf(e.target.value + ":00Z")}
-            className="px-4 py-2.5 bg-surface border border-line rounded-lg text-ink font-mono text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+            className="px-4 py-2.5 bg-surface border border-line rounded-lg text-ink font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
           <Badge variant="info" size="sm">Temporal cutoff enforced</Badge>
-        </motion.div>
+        </div>
 
         {/* Pipeline Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex flex-wrap items-center gap-2 p-4 bg-surface-raised rounded-xl border border-line"
-        >
-          {PIPELINE_STAGES.map((stage, i) => (
-            <motion.div
+        <div className="flex flex-wrap items-center gap-2 p-4 bg-surface rounded-xl border border-line">
+          {PIPELINE_STAGES.map((stage) => (
+            <div
               key={stage.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * i }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-overlay/50 border border-line"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-subtle border border-line"
             >
               <span className={clsx("w-8 h-8 rounded-lg flex items-center justify-center", `bg-${stage.color}/15 text-${stage.color}`)}>
                 {stage.icon}
               </span>
               <span className="text-sm font-medium text-ink">{stage.label}</span>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Timeline */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        <div>
           <Card variant="raised" padding="none" className="overflow-hidden">
             <div className="p-4 border-b border-line">
               <h2 className="text-lg font-semibold text-ink">Chronological Events</h2>
             </div>
             <div className="divide-y divide-line/50">
               {TIMELINE_EVENTS.map((event, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.03 * i }}
-                  className="flex items-start gap-4 p-4 hover:bg-surface-overlay/30 transition-colors relative"
+                  className="flex items-start gap-4 p-4 hover:bg-surface-subtle transition-colors relative"
                 >
                   <div className="flex flex-col items-center flex-shrink-0 relative">
                     <div className={clsx("w-3 h-3 rounded-full border-2 z-10",
@@ -165,19 +140,14 @@ export default function TimelinePage() {
                     </div>
                     <p className="text-sm text-ink-muted mt-1 font-mono">{event.details}</p>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </Card>
-        </motion.div>
+        </div>
 
         {/* Summary */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-        >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card variant="raised" padding="md" className="text-center">
             <p className="text-3xl font-bold font-mono text-ink">12</p>
             <p className="text-sm text-ink-muted">Total Events</p>
@@ -191,10 +161,10 @@ export default function TimelinePage() {
             <p className="text-sm text-ink-muted">Completed</p>
           </Card>
           <Card variant="raised" padding="md" className="text-center">
-            <p className="text-3xl font-bold font-mono text-gold">0</p>
+            <p className="text-3xl font-bold font-mono text-accent">0</p>
             <p className="text-sm text-ink-muted">Failed</p>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </MainLayout>
   );

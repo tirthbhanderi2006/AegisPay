@@ -1,59 +1,78 @@
 "use client";
 
 import React, { useState } from "react";
-import { Shield, Copy, Check } from "lucide-react";
-import { clsx } from "clsx";
+import { Copy, Check, Lock, Smartphone, Globe, User, CreditCard } from "lucide-react";
 
-interface PrivacyTokenProps {
-  token: string | null | undefined;
-  type?: "device" | "ip" | "account" | "card" | "merchant" | "generic";
+export interface PrivacyTokenProps {
+  token: string;
+  type?: "device" | "ip" | "account" | "card" | "generic";
   label?: string;
+  className?: string;
 }
 
-export function PrivacyToken({ token, type = "generic", label }: PrivacyTokenProps) {
+export function PrivacyToken({
+  token,
+  type = "generic",
+  label,
+  className = "",
+}: PrivacyTokenProps) {
   const [copied, setCopied] = useState(false);
 
-  if (!token) {
-    return <span className="text-xs text-ink-faint font-mono">None</span>;
-  }
-
-  // Ensure raw PANs or full IPs are masked safely
-  const formatToken = (val: string) => {
-    if (val.startsWith("dev_") || val.startsWith("ip_") || val.startsWith("acct_") || val.startsWith("pi_")) {
-      return val;
-    }
-    if (val.length > 8) {
-      return `${val.slice(0, 4)}••••${val.slice(-4)}`;
-    }
-    return `••••${val.slice(-4)}`;
+  // Mask token strictly eliminating raw PII
+  const getMasked = (val: string) => {
+    if (!val) return "••••••••";
+    if (val.includes("••••")) return val;
+    const parts = val.split("_");
+    const prefix = parts.length > 1 ? parts.slice(0, -1).join("_") + "_" : "";
+    const core = parts[parts.length - 1] || "";
+    const suffix = core.slice(-4).toUpperCase();
+    return `${prefix}••••${suffix}`;
   };
 
-  const displayVal = formatToken(token);
+  const masked = getMasked(token);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(token);
+  const getIcon = () => {
+    switch (type) {
+      case "device":
+        return <Smartphone className="w-3.5 h-3.5 text-ink-muted" />;
+      case "ip":
+        return <Globe className="w-3.5 h-3.5 text-ink-muted" />;
+      case "account":
+        return <User className="w-3.5 h-3.5 text-ink-muted" />;
+      case "card":
+        return <CreditCard className="w-3.5 h-3.5 text-ink-muted" />;
+      default:
+        return <Lock className="w-3.5 h-3.5 text-ink-muted" />;
+    }
+  };
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(masked);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="inline-flex items-center gap-1.5 font-mono text-xs">
-      {label && <span className="text-ink-muted text-[11px] font-sans mr-1">{label}:</span>}
-      <span
+    <div
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border border-line bg-surface font-mono text-xs text-ink transition-colors hover:border-line-strong select-text ${className}`}
+      title={`Privacy-Safe Masked Token (${type})`}
+    >
+      {getIcon()}
+      {label && <span className="text-ink-muted text-[10px] uppercase">{label}:</span>}
+      <span className="font-semibold text-ink select-all">{masked}</span>
+      <button
+        type="button"
         onClick={handleCopy}
-        title="Privacy-safe synthetic token (Click to copy)"
-        className={clsx(
-          "px-2 py-0.5 rounded bg-surface-overlay text-ink border border-line cursor-pointer hover:border-gold/50 transition-colors inline-flex items-center gap-1.5 select-all font-medium"
-        )}
+        className="ml-1 p-0.5 rounded text-ink-muted hover:text-ink hover:bg-surface-subtle transition-colors"
+        aria-label="Copy masked token"
       >
-        <Shield className="w-3 h-3 text-gold flex-shrink-0" />
-        {displayVal}
         {copied ? (
-          <Check className="w-3 h-3 text-emerald ml-0.5" />
+          <Check className="w-3 h-3 text-emerald" />
         ) : (
-          <Copy className="w-3 h-3 text-ink-faint hover:text-ink ml-0.5" />
+          <Copy className="w-3 h-3" />
         )}
-      </span>
+      </button>
     </div>
   );
 }

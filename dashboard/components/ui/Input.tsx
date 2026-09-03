@@ -1,72 +1,54 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import React, { forwardRef } from "react";
 import { clsx } from "clsx";
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  hint?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  fullWidth?: boolean;
+  helperText?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, leftIcon, rightIcon, fullWidth = true, className, id, ...props }, ref) => {
-    const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
-    const errorId = `${inputId}-error`;
-    const hintId = `${inputId}-hint`;
+  ({ label, error, leftIcon, rightIcon, helperText, className, disabled, id, ...props }, ref) => {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined);
 
     return (
-      <div className={clsx("w-full", fullWidth && "w-full")}>
+      <div className="w-full space-y-1">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-ink mb-1.5">
+          <label htmlFor={inputId} className="block text-xs font-medium text-ink-secondary">
             {label}
           </label>
         )}
-        <div className="relative">
+        <div className="relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none">
+            <span className="absolute left-2.5 text-ink-muted pointer-events-none flex items-center">
               {leftIcon}
-            </div>
+            </span>
           )}
           <input
             ref={ref}
             id={inputId}
+            disabled={disabled}
             className={clsx(
-              "w-full rounded-md border bg-surface text-ink placeholder-ink-muted",
-              "transition-all duration-150",
-              "focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              leftIcon ? "pl-10" : "pl-4",
-              rightIcon ? "pr-10" : "pr-4",
-              "py-2.5 text-sm",
-              error
-                ? "border-red focus:ring-red"
-                : "border-line hover:border-line-strong",
+              "w-full h-8 px-2.5 bg-surface text-ink text-xs font-sans rounded border border-line transition-colors placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-subtle disabled:text-ink-faint disabled:cursor-not-allowed",
+              leftIcon && "pl-8",
+              rightIcon && "pr-8",
+              error && "border-red focus:border-red focus:ring-red",
               className
             )}
-            aria-invalid={error ? "true" : "false"}
-            aria-describedby={clsx(error && errorId, hint && hintId)}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none">
+            <span className="absolute right-2.5 text-ink-muted pointer-events-none flex items-center">
               {rightIcon}
-            </div>
+            </span>
           )}
         </div>
-        {error && (
-          <p id={errorId} className="mt-1.5 text-sm text-red" role="alert">
-            {error}
-          </p>
-        )}
-        {hint && !error && (
-          <p id={hintId} className="mt-1.5 text-sm text-ink-muted">
-            {hint}
-          </p>
-        )}
+        {error && <p className="text-[11px] text-red mt-0.5">{error}</p>}
+        {!error && helperText && <p className="text-[11px] text-ink-muted mt-0.5">{helperText}</p>}
       </div>
     );
   }
@@ -74,47 +56,36 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = "Input";
 
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string; hint?: string; fullWidth?: boolean }>(
-  ({ label, error, hint, fullWidth = true, className, id, ...props }, ref) => {
-    const textareaId = id || label?.toLowerCase().replace(/\s+/g, "-");
-    const errorId = `${textareaId}-error`;
-    const hintId = `${textareaId}-hint`;
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
+  error?: string;
+  helperText?: string;
+}
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ label, error, helperText, className, disabled, id, ...props }, ref) => {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined);
 
     return (
-      <div className={clsx("w-full", fullWidth && "w-full")}>
+      <div className="w-full space-y-1">
         {label && (
-          <label htmlFor={textareaId} className="block text-sm font-medium text-ink mb-1.5">
+          <label htmlFor={inputId} className="block text-xs font-medium text-ink-secondary">
             {label}
           </label>
         )}
         <textarea
           ref={ref}
-          id={textareaId}
+          id={inputId}
+          disabled={disabled}
           className={clsx(
-            "w-full rounded-md border bg-surface text-ink placeholder-ink-muted resize-y min-h-[80px]",
-            "transition-all duration-150",
-            "focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            "p-4 text-sm",
-            error
-              ? "border-red focus:ring-red"
-              : "border-line hover:border-line-strong",
+            "w-full p-2.5 bg-surface text-ink text-xs font-sans rounded border border-line transition-colors placeholder:text-ink-faint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-subtle disabled:text-ink-faint disabled:cursor-not-allowed",
+            error && "border-red focus:border-red focus:ring-red",
             className
           )}
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby={clsx(error && errorId, hint && hintId)}
           {...props}
         />
-        {error && (
-          <p id={errorId} className="mt-1.5 text-sm text-red" role="alert">
-            {error}
-          </p>
-        )}
-        {hint && !error && (
-          <p id={hintId} className="mt-1.5 text-sm text-ink-muted">
-            {hint}
-          </p>
-        )}
+        {error && <p className="text-[11px] text-red mt-0.5">{error}</p>}
+        {!error && helperText && <p className="text-[11px] text-ink-muted mt-0.5">{helperText}</p>}
       </div>
     );
   }

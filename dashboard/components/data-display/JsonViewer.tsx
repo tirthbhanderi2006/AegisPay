@@ -1,66 +1,68 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, ChevronDown, ChevronRight } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronRight, Terminal } from "lucide-react";
 import { Button } from "@/components/ui";
 
-interface JsonViewerProps {
+export interface JsonViewerProps {
   data: any;
   title?: string;
-  defaultExpanded?: boolean;
   maxHeight?: string;
+  initialCollapsed?: boolean;
+  className?: string;
 }
 
 export function JsonViewer({
   data,
-  title = "Raw JSON Response",
-  defaultExpanded = true,
-  maxHeight = "400px",
+  title = "JSON Payload",
+  maxHeight = "350px",
+  initialCollapsed = false,
+  className = "",
 }: JsonViewerProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
   const [copied, setCopied] = useState(false);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
 
-  const jsonString = JSON.stringify(data, null, 2);
+  const jsonString = typeof data === "string" ? data : JSON.stringify(data, null, 2);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(jsonString);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-    }
+  const handleCopy = () => {
+    navigator.clipboard.writeText(jsonString);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="rounded-xl border border-line bg-surface-overlay/80 overflow-hidden font-mono text-xs">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-surface border-b border-line">
+    <div className={`rounded-lg border border-line bg-surface overflow-hidden text-xs font-mono select-text ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-3.5 py-2 bg-surface-subtle border-b border-line">
         <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 font-semibold text-ink hover:text-gold transition-colors text-xs"
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-2 text-ink font-semibold hover:text-accent transition-colors"
         >
-          {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          <span>{title}</span>
+          {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          <Terminal className="w-3.5 h-3.5 text-ink-muted" />
+          <span className="text-xs uppercase tracking-wider">{title}</span>
         </button>
 
         <Button
           variant="ghost"
           size="sm"
-          leftIcon={copied ? <Check className="w-3.5 h-3.5 text-emerald" /> : <Copy className="w-3.5 h-3.5" />}
           onClick={handleCopy}
-          className="text-xs h-7 px-2"
+          leftIcon={copied ? <Check className="w-3.5 h-3.5 text-emerald" /> : <Copy className="w-3.5 h-3.5" />}
+          className="h-7 text-xs px-2"
         >
           {copied ? "Copied" : "Copy JSON"}
         </Button>
       </div>
 
-      {expanded && (
-        <pre
-          className="p-4 overflow-auto text-ink-muted leading-relaxed select-all"
+      {/* Code Body */}
+      {!collapsed && (
+        <div
+          className="p-3.5 overflow-auto bg-surface-subtle/50 text-ink leading-relaxed"
           style={{ maxHeight }}
         >
-          <code>{jsonString}</code>
-        </pre>
+          <pre className="text-[11px] font-mono whitespace-pre">{jsonString}</pre>
+        </div>
       )}
     </div>
   );

@@ -1,34 +1,34 @@
 "use client";
 
-import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
+import React, { forwardRef } from "react";
 import { clsx } from "clsx";
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "raised" | "outlined" | "interactive";
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: "flat" | "raised" | "subtle" | "outlined";
   padding?: "none" | "sm" | "md" | "lg";
 }
 
-const variantStyles = {
-  default: "bg-surface-raised border border-line",
-  raised: "bg-surface-raised shadow-card",
-  outlined: "bg-transparent border-2 border-line",
-  interactive: "bg-surface-raised border border-line hover:border-gold/50 hover:shadow-card transition-all duration-200 cursor-pointer",
-};
-
-const paddingStyles = {
-  none: "",
-  sm: "p-4",
-  md: "p-5",
-  lg: "p-6",
-};
-
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ children, variant = "default", padding = "md", className, ...props }, ref) => {
+  ({ variant = "raised", padding = "md", className, children, ...props }, ref) => {
+    const variantStyles = {
+      flat: "bg-surface border border-line",
+      raised: "bg-surface border border-line shadow-card",
+      subtle: "bg-surface-subtle border border-line",
+      outlined: "bg-transparent border border-line",
+    };
+
+    const paddingStyles = {
+      none: "p-0",
+      sm: "p-3",
+      md: "p-4 sm:p-5",
+      lg: "p-6 sm:p-7",
+    };
+
     return (
       <div
         ref={ref}
         className={clsx(
-          "rounded-xl",
+          "rounded-lg transition-colors overflow-hidden",
           variantStyles[variant],
           paddingStyles[padding],
           className
@@ -43,64 +43,65 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 
 Card.displayName = "Card";
 
-export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ children, className, ...props }, ref) => (
-    <div ref={ref} className={clsx("mb-4", className)} {...props}>
+export function CardHeader({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={clsx("flex flex-col space-y-1 pb-3 border-b border-line mb-4", className)} {...props}>
       {children}
     </div>
-  )
-);
+  );
+}
 
-CardHeader.displayName = "CardHeader";
-
-export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
-  ({ children, className, ...props }, ref) => (
+export function CardTitle({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
     <h3
-      ref={ref}
-      className={clsx("text-xl font-semibold text-ink tracking-tight", className)}
+      className={clsx("font-sans text-sm font-semibold text-ink tracking-tight", className)}
       {...props}
     >
       {children}
     </h3>
-  )
-);
+  );
+}
 
-CardTitle.displayName = "CardTitle";
-
-export const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
-  ({ children, className, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={clsx("text-sm text-ink-muted mt-1", className)}
-      {...props}
-    >
+export function CardDescription({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p className={clsx("text-xs text-ink-muted leading-normal", className)} {...props}>
       {children}
     </p>
-  )
-);
+  );
+}
 
-CardDescription.displayName = "CardDescription";
-
-export const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ children, className, ...props }, ref) => (
-    <div ref={ref} className={clsx(className)} {...props}>
+export function CardContent({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={clsx("space-y-4", className)} {...props}>
       {children}
     </div>
-  )
-);
+  );
+}
 
-CardContent.displayName = "CardContent";
-
-export const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ children, className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={clsx("mt-4 pt-4 border-t border-line flex items-center gap-3", className)}
-      {...props}
-    >
+export function CardFooter({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={clsx("pt-3 border-t border-line mt-4 flex items-center justify-between text-xs", className)} {...props}>
       {children}
     </div>
-  )
-);
-
-CardFooter.displayName = "CardFooter";
+  );
+}

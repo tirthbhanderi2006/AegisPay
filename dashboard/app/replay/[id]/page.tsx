@@ -1,19 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { clsx } from "clsx";
 import {
   ChevronLeft,
   RotateCcw,
   CheckCircle,
-  XCircle,
   Clock,
   Shield,
   FileText,
-  Zap,
   SlidersHorizontal,
-  RefreshCw,
 } from "lucide-react";
 import { Card, Badge, Button, DecisionBadge, RiskLevelBadge, Tabs, type TabItem } from "@/components/ui";
 import { MainLayout } from "@/components/layout";
@@ -26,7 +22,7 @@ export default function ReplayPage() {
 
   const [activeTab, setActiveTab] = useState("comparison");
   const [replaying, setReplaying] = useState(false);
-  const [asOfDate, setAsOfDate] = useState("2026-08-29T14:31:03Z");
+  const [asOfDate, setAsOfDate] = useState("2026-08-29T14:31:02Z");
 
   const [replayState, setReplayState] = useState({
     original: {
@@ -88,23 +84,23 @@ export default function ReplayPage() {
         });
       }
     } catch {
-      // Keep verified state
+      // Keep verified mathematical match
     } finally {
       setReplaying(false);
     }
   };
 
   const tabs: TabItem[] = [
-    { value: "comparison", label: "Side-by-Side Comparison", icon: <FileText className="w-4 h-4" /> },
-    { value: "features", label: "Frozen Weights & Features", icon: <SlidersHorizontal className="w-4 h-4" /> },
-    { value: "audit", label: "Tamper-Proof Verification", icon: <Shield className="w-4 h-4" /> },
+    { value: "comparison", label: "Side-by-Side Verification", icon: <FileText className="w-3.5 h-3.5" /> },
+    { value: "features", label: "Frozen Weights & Features", icon: <SlidersHorizontal className="w-3.5 h-3.5" /> },
+    { value: "audit", label: "SHA-256 Decision Hash Audit", icon: <Shield className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 select-text">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-line">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -115,18 +111,18 @@ export default function ReplayPage() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono uppercase text-ink-faint">DETERMINISTIC REPLAY ENGINE</span>
-                <span className="text-xs text-ink-muted">/</span>
-                <span className="text-sm font-bold font-mono text-gold">{transactionId}</span>
+              <div className="flex items-center gap-2 font-mono text-xs text-ink-muted">
+                <span>REPLAY ENGINE</span>
+                <span>/</span>
+                <span className="font-bold text-ink">{transactionId}</span>
               </div>
-              <h1 className="text-xl font-bold text-ink mt-0.5">
-                Historical Decision Reproducibility Verification
+              <h1 className="text-xl font-bold tracking-tight text-ink mt-0.5">
+                Deterministic Decision Reproducibility
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Button
               variant="primary"
               size="sm"
@@ -139,13 +135,11 @@ export default function ReplayPage() {
           </div>
         </div>
 
-        {/* Replay Verification Banner */}
-        <div className="p-6 rounded-xl border-2 bg-emerald/5 border-emerald/30 text-center space-y-2">
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <CheckCircle className="w-6 h-6 text-emerald" />
-            <span className="text-lg font-bold text-ink">
-              Deterministic Mathematical Reproducibility Confirmed
-            </span>
+        {/* Delta Guarantee Verification Banner */}
+        <div className="p-6 rounded-lg border border-emerald-border bg-emerald-bg/40 text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 font-mono text-emerald text-sm font-bold uppercase">
+            <CheckCircle className="w-5 h-5" />
+            <span>Mathematical Reproducibility Verified</span>
           </div>
 
           <div className="flex items-center justify-center gap-8 pt-3 font-mono">
@@ -166,35 +160,31 @@ export default function ReplayPage() {
         </div>
 
         {/* Temporal Cutoff Controls */}
-        <Card variant="raised" padding="md" className="space-y-3 font-mono text-xs">
+        <div className="p-4 bg-surface-subtle rounded border border-line space-y-2 font-mono text-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gold" />
-              <span className="font-bold text-ink uppercase">Historical Temporal Boundary (T &le; as_of)</span>
+              <Clock className="w-4 h-4 text-accent" />
+              <span className="font-bold text-ink uppercase">Historical Temporal Cutoff (T &le; as_of)</span>
             </div>
             <Badge variant="info" size="sm">ZERO HINDSIGHT BIAS</Badge>
           </div>
-          <p className="text-ink-muted font-sans text-xs">
-            Re-evaluates the historical transaction strictly using information available at decision timestamp. Future events and later chargebacks are cryptographically excluded.
+          <p className="text-ink-secondary font-sans text-xs">
+            The decision is re-evaluated using the exact snapshot of feature metrics and frozen calibration weights available at transaction time. Subsequent chargebacks or new cards are cryptographically excluded.
           </p>
-          <div className="p-2.5 bg-surface-overlay rounded border border-line flex items-center justify-between">
-            <span className="text-ink-muted">as_of Cutoff ISO Timestamp:</span>
-            <span className="text-gold font-bold">{asOfDate}</span>
-          </div>
-        </Card>
+        </div>
 
-        {/* Tabs & Details */}
-        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="pills">
+        {/* Tabs */}
+        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="line">
           {activeTab === "comparison" && (
-            <div className="space-y-6 mt-4">
-              <Card variant="raised" padding="none">
+            <div className="space-y-4 mt-4">
+              <Card variant="flat" padding="none" className="border">
                 <table className="w-full text-xs font-mono text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-line bg-surface-overlay/80 text-ink-muted uppercase">
-                      <th className="py-3 px-4">Evaluation Dimension</th>
-                      <th className="py-3 px-4 text-center">Original Decision (T_0)</th>
-                      <th className="py-3 px-4 text-center">Replay Engine (T_replay)</th>
-                      <th className="py-3 px-4 text-center">Delta / Match</th>
+                    <tr className="border-b border-line bg-surface-subtle text-ink-muted uppercase text-[10px]">
+                      <th className="py-2.5 px-4">Evaluation Dimension</th>
+                      <th className="py-2.5 px-4 text-center">Original Decision (T_0)</th>
+                      <th className="py-2.5 px-4 text-center">Replay Engine (T_replay)</th>
+                      <th className="py-2.5 px-4 text-center">Delta / Match</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/60">
@@ -208,8 +198,8 @@ export default function ReplayPage() {
                       { label: "Feature Schema Struct", orig: replayState.original.featureVersion, rep: replayState.replayed.featureVersion, match: true },
                       { label: "Entity Graph Snapshot", orig: replayState.original.graphSnapshot, rep: replayState.replayed.graphSnapshot, match: true },
                     ].map((row, idx) => (
-                      <tr key={idx} className="hover:bg-surface-overlay/40 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-ink font-sans text-sm">{row.label}</td>
+                      <tr key={idx} className="hover:bg-surface-subtle transition-colors">
+                        <td className="py-3 px-4 font-semibold text-ink font-sans text-xs">{row.label}</td>
                         <td className="py-3 px-4 text-center text-ink">{row.orig}</td>
                         <td className="py-3 px-4 text-center text-ink">{row.rep}</td>
                         <td className="py-3 px-4 text-center">
@@ -225,23 +215,23 @@ export default function ReplayPage() {
 
           {activeTab === "features" && (
             <div className="space-y-4 mt-4">
-              <Card variant="raised" padding="lg">
-                <h3 className="text-sm font-bold text-ink uppercase tracking-wider font-mono mb-3">
+              <Card variant="flat" padding="md" className="space-y-3">
+                <h3 className="text-xs font-bold text-ink uppercase tracking-wider font-mono">
                   Deterministic Feature Contributions (cal_v1.4)
                 </h3>
-                <div className="space-y-3 text-xs font-mono">
+                <div className="space-y-2 text-xs font-mono">
                   {[
                     { feature: "Payment Velocity (2-min window)", raw: "12 txns", weight: "0.35", contrib: "+35.0%" },
                     { feature: "Cadence Behavioral Deviation", raw: "0.87 (3.4σ)", weight: "0.28", contrib: "+28.0%" },
                     { feature: "Entity Network Propagation", raw: "4 linked instruments", weight: "0.18", contrib: "+18.0%" },
                     { feature: "Instrument Cycling Frequency", raw: "3 cards / session", weight: "0.12", contrib: "+12.0%" },
                   ].map((f, i) => (
-                    <div key={i} className="p-3 bg-surface-overlay/60 rounded-lg border border-line flex items-center justify-between">
+                    <div key={i} className="p-2.5 bg-surface-subtle rounded border border-line flex items-center justify-between">
                       <div>
                         <span className="font-semibold text-ink">{f.feature}</span>
-                        <span className="text-ink-muted block text-[11px] mt-0.5">Raw Value: {f.raw} | Weight: {f.weight}</span>
+                        <span className="text-ink-muted block text-[10px] mt-0.5">Raw Value: {f.raw} · Weight: {f.weight}</span>
                       </div>
-                      <span className="text-gold font-bold text-sm">{f.contrib}</span>
+                      <span className="text-accent font-bold text-xs">{f.contrib}</span>
                     </div>
                   ))}
                 </div>
@@ -251,18 +241,12 @@ export default function ReplayPage() {
 
           {activeTab === "audit" && (
             <div className="space-y-4 mt-4">
-              <Card variant="raised" padding="lg" className="space-y-3 text-xs font-mono">
-                <h3 className="text-sm font-bold text-ink uppercase tracking-wider font-mono">
-                  Cryptographic Audit Verification
+              <Card variant="flat" padding="md" className="space-y-3 text-xs font-mono">
+                <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
+                  Verified SHA-256 Decision Hash Record
                 </h3>
-                <p className="text-ink-muted font-sans leading-relaxed">
-                  The replay engine verified that the SHA-256 decision hash recorded in the immutable audit store matches the hash generated by re-evaluating the raw snapshot.
-                </p>
-                <div className="p-3 bg-surface-overlay rounded-lg border border-line space-y-1">
-                  <span className="text-ink-muted block text-[10px] uppercase">Verified SHA-256 Decision Hash</span>
-                  <span className="text-emerald font-bold select-all break-all text-xs">
-                    a4f891b2c3d4e5f67890123456789abcdefa4f891b2c3d4e5f67890123456789abc
-                  </span>
+                <div className="p-3 bg-surface-subtle rounded border border-line text-ink select-all break-all text-[11px]">
+                  a4f891b2c3d4e5f67890123456789abcdefa4f891b2c3d4e5f67890123456789abc
                 </div>
               </Card>
             </div>

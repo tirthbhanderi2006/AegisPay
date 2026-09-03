@@ -1,25 +1,18 @@
 "use client";
 
-import React, { useState, type ReactNode } from "react";
+import React from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 
-export interface MainLayoutProps {
-  children: ReactNode;
-}
-
-export function MainLayout({ children }: MainLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
+export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-surface text-ink flex">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+    <div className="min-h-screen bg-canvas flex text-ink">
+      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 min-w-0 p-4 lg:p-6 max-w-7xl w-full mx-auto">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+          {children}
+        </main>
       </div>
     </div>
   );

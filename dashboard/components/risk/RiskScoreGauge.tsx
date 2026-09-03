@@ -1,112 +1,88 @@
 "use client";
 
 import React from "react";
-import { clsx } from "clsx";
-import type { RiskLevel } from "@/lib/types";
+import type { RiskLevel, DecisionAction } from "@/lib/types";
 
-interface RiskScoreGaugeProps {
+export interface RiskScoreGaugeProps {
   score: number; // 0.0 to 1.0 or 0 to 100
-  level?: RiskLevel;
+  level?: RiskLevel | string;
+  decision?: DecisionAction | string;
   size?: "sm" | "md" | "lg";
-  showLabel?: boolean;
+  className?: string;
 }
 
 export function RiskScoreGauge({
   score,
   level,
+  decision,
   size = "md",
-  showLabel = true,
+  className = "",
 }: RiskScoreGaugeProps) {
-  // Normalize to 0 - 100
-  const normalizedScore = score <= 1.0 ? Math.round(score * 10000) / 100 : Math.round(score * 100) / 100;
-  
-  const computedLevel: RiskLevel =
-    level || (normalizedScore >= 70 ? "HIGH" : normalizedScore >= 40 ? "MEDIUM" : "LOW");
+  // Normalize score to 0..100
+  const normalizedScore = score <= 1.0 && score > 0 ? Math.round(score * 1000) / 10 : Math.round(score * 10) / 10;
 
-  const colorClass =
-    computedLevel === "HIGH"
-      ? "text-red stroke-red fill-red"
-      : computedLevel === "MEDIUM"
-      ? "text-amber stroke-amber fill-amber"
-      : "text-emerald stroke-emerald fill-emerald";
+  const sizeConfigs = {
+    sm: { dimension: 70, stroke: 5, fontSize: "text-sm", labelSize: "text-[9px]" },
+    md: { dimension: 110, stroke: 7, fontSize: "text-2xl", labelSize: "text-[10px]" },
+    lg: { dimension: 150, stroke: 9, fontSize: "text-3xl", labelSize: "text-xs" },
+  };
 
-  const strokeColor =
-    computedLevel === "HIGH" ? "#DC2626" : computedLevel === "MEDIUM" ? "#D97706" : "#059669";
-
-  const radius = size === "sm" ? 28 : size === "lg" ? 54 : 40;
-  const strokeWidth = size === "sm" ? 5 : size === "lg" ? 8 : 6;
+  const { dimension, stroke, fontSize, labelSize } = sizeConfigs[size];
+  const radius = (dimension - stroke * 2) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (normalizedScore / 100) * circumference;
-  const svgSize = (radius + strokeWidth) * 2;
+  const strokeDashoffset = circumference - (Math.min(normalizedScore, 100) / 100) * circumference;
+
+  const getColor = () => {
+    if (normalizedScore >= 70) return { stroke: "#B91C1C", text: "text-red", bg: "bg-red-bg" };
+    if (normalizedScore >= 40) return { stroke: "#B45309", text: "text-amber", bg: "bg-amber-bg" };
+    return { stroke: "#15803D", text: "text-emerald", bg: "bg-emerald-bg" };
+  };
+
+  const color = getColor();
 
   return (
-    <div className="flex flex-col items-center justify-center relative">
-      <div className="relative flex items-center justify-center">
-        <svg
-          width={svgSize}
-          height={svgSize}
-          className="transform -rotate-90"
-          aria-hidden="true"
-        >
-          {/* Background circle */}
+    <div className={`flex flex-col items-center justify-center ${className}`}>
+      <div className="relative flex items-center justify-center" style={{ width: dimension, height: dimension }}>
+        <svg width={dimension} height={dimension} className="transform -rotate-90">
+          {/* Background track circle */}
           <circle
-            cx={svgSize / 2}
-            cy={svgSize / 2}
+            cx={dimension / 2}
+            cy={dimension / 2}
             r={radius}
-            stroke="currentColor"
-            strokeWidth={strokeWidth}
+            stroke="#E5E5E3"
+            strokeWidth={stroke}
             fill="transparent"
-            className="text-surface-overlay"
           />
-          {/* Calibrated score progress */}
+          {/* Progress circle */}
           <circle
-            cx={svgSize / 2}
-            cy={svgSize / 2}
+            cx={dimension / 2}
+            cy={dimension / 2}
             r={radius}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            fill="transparent"
+            stroke={color.stroke}
+            strokeWidth={stroke}
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
+            fill="transparent"
             className="transition-all duration-700 ease-out"
           />
         </svg>
 
+        {/* Center Text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span
-            className={clsx(
-              "font-mono font-bold tracking-tight text-ink",
-              size === "sm" ? "text-sm" : size === "lg" ? "text-2xl" : "text-lg"
-            )}
-          >
+          <span className={`font-mono font-bold tracking-tight text-ink ${fontSize}`}>
             {normalizedScore.toFixed(1)}
           </span>
-          {size !== "sm" && (
-            <span className="text-[10px] text-ink-muted uppercase font-mono tracking-widest">
-              / 100
-            </span>
-          )}
+          <span className={`font-mono text-ink-muted uppercase ${labelSize}`}>
+            / 100
+          </span>
         </div>
       </div>
 
-      {showLabel && (
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <span
-            className={clsx(
-              "w-2 h-2 rounded-full",
-              computedLevel === "HIGH" ? "bg-red" : computedLevel === "MEDIUM" ? "bg-amber" : "bg-emerald"
-            )}
-          />
-          <span
-            className={clsx(
-              "text-xs font-semibold uppercase tracking-wider font-mono",
-              computedLevel === "HIGH" ? "text-red" : computedLevel === "MEDIUM" ? "text-amber" : "text-emerald"
-            )}
-          >
-            {computedLevel} RISK
-          </span>
-        </div>
+      {level && (
+        <span className={`mt-2 font-mono font-bold text-xs uppercase tracking-wider ${color.text}`}>
+          {level} RISK
+        </span>
       )}
     </div>
   );

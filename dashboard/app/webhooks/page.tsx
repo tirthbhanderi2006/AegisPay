@@ -5,17 +5,13 @@ import {
   MessageSquare,
   Shield,
   Clock,
-  RefreshCw,
   Key,
   Globe,
   Lock,
   CheckCircle,
-  XCircle,
-  AlertTriangle,
-  RotateCcw,
   Plus,
 } from "lucide-react";
-import { Card, Badge, Button, Table, Modal, Tabs, type TabItem, StatusBadge } from "@/components/ui";
+import { Card, Badge, Button, Table, Modal, Tabs, type TabItem } from "@/components/ui";
 import { MainLayout } from "@/components/layout";
 import { HmacInspector } from "@/components/security/HmacInspector";
 import { JsonViewer } from "@/components/data-display/JsonViewer";
@@ -97,26 +93,30 @@ export default function WebhooksPage() {
   const [selectedDelivery, setSelectedDelivery] = useState<WebhookDeliveryRecord | null>(null);
 
   const tabs: TabItem[] = [
-    { value: "deliveries", label: "Outbound Webhook Deliveries", icon: <Clock className="w-4 h-4" /> },
-    { value: "security", label: "HMAC Security & Verification", icon: <Shield className="w-4 h-4" /> },
-    { value: "subscriptions", label: "Registered Endpoints", icon: <MessageSquare className="w-4 h-4" /> },
+    { value: "deliveries", label: "Outbound Deliveries", icon: <Clock className="w-3.5 h-3.5" /> },
+    { value: "security", label: "HMAC Security & Verification", icon: <Shield className="w-3.5 h-3.5" /> },
+    { value: "subscriptions", label: "Subscribed Endpoints", icon: <MessageSquare className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 select-text">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
           <div>
-            <h1 className="text-2xl font-bold text-ink">Webhook Operations & Security</h1>
-            <p className="text-xs text-ink-muted mt-1">
-              Cryptographically signed event delivery with HMAC-SHA256, 5-minute replay protection, and retry logs
-            </p>
+            <div className="flex items-center gap-2 font-mono text-xs text-ink-muted">
+              <span>OPERATIONS</span>
+              <span>/</span>
+              <span className="font-bold text-ink">WEBHOOK DISPATCHER</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink mt-0.5">
+              Webhook Delivery & HMAC Verification
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
             <PermissionGuard permission="operations:webhooks_manage">
-              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+              <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />}>
                 Register Webhook Endpoint
               </Button>
             </PermissionGuard>
@@ -124,54 +124,54 @@ export default function WebhooksPage() {
         </div>
 
         {/* Security Metric Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card variant="raised" padding="md" className="space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Card variant="flat" padding="md" className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+              <span className="text-[11px] font-mono font-semibold uppercase text-ink-muted">
                 HMAC-SHA256 Signing
               </span>
-              <Key className="w-4 h-4 text-emerald" />
+              <Key className="w-3.5 h-3.5 text-emerald" />
             </div>
             <p className="text-xl font-bold font-mono text-ink">Strictly Enforced</p>
-            <p className="text-xs text-ink-muted">Per-merchant shared secret with constant-time check</p>
+            <p className="text-xs text-ink-secondary">Constant-time validation via shared secret</p>
           </Card>
 
-          <Card variant="raised" padding="md" className="space-y-1">
+          <Card variant="flat" padding="md" className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Replay Window
+              <span className="text-[11px] font-mono font-semibold uppercase text-ink-muted">
+                Replay Window Tolerance
               </span>
-              <Clock className="w-4 h-4 text-emerald" />
+              <Clock className="w-3.5 h-3.5 text-emerald" />
             </div>
             <p className="text-xl font-bold font-mono text-ink">&lt; 300s (5 Minutes)</p>
-            <p className="text-xs text-ink-muted">Timestamp drift validated against UTC clock</p>
+            <p className="text-xs text-ink-secondary">Timestamp drift validated against UTC clock</p>
           </Card>
 
-          <Card variant="raised" padding="md" className="space-y-1">
+          <Card variant="flat" padding="md" className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+              <span className="text-[11px] font-mono font-semibold uppercase text-ink-muted">
                 Receiver Idempotency
               </span>
-              <Shield className="w-4 h-4 text-emerald" />
+              <Shield className="w-3.5 h-3.5 text-emerald" />
             </div>
             <p className="text-xl font-bold font-mono text-ink">X-Aegis-Delivery-Id</p>
-            <p className="text-xs text-ink-muted">Guarantees exactly-once processing</p>
+            <p className="text-xs text-ink-secondary">Guarantees exactly-once processing</p>
           </Card>
         </div>
 
         {/* Tabs */}
-        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="pills">
+        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="line">
           {/* Tab 1: Deliveries */}
           {activeTab === "deliveries" && (
             <div className="space-y-4 mt-4">
-              <Card variant="raised" padding="none">
+              <Card variant="flat" padding="none" className="border">
                 <Table
                   columns={[
                     {
                       key: "delivery_id",
                       header: "Delivery ID",
                       render: (row: WebhookDeliveryRecord) => (
-                        <span className="font-mono text-xs text-gold font-bold">{row.delivery_id}</span>
+                        <span className="font-mono text-xs text-ink font-bold">{row.delivery_id}</span>
                       ),
                     },
                     {
@@ -218,7 +218,7 @@ export default function WebhooksPage() {
                       header: "Timestamp",
                       align: "right",
                       render: (row: WebhookDeliveryRecord) => (
-                        <span className="font-mono text-xs text-ink-faint">
+                        <span className="font-mono text-xs text-ink-muted">
                           {new Date(row.timestamp).toLocaleTimeString()}
                         </span>
                       ),
@@ -227,15 +227,15 @@ export default function WebhooksPage() {
                   data={MOCK_WEBHOOK_DELIVERIES}
                   keyExtractor={(row) => row.delivery_id}
                   onRowClick={(row) => setSelectedDelivery(row)}
-                  rowClassName={() => "cursor-pointer hover:bg-surface-overlay/60 transition-colors"}
+                  rowClassName={() => "cursor-pointer hover:bg-surface-subtle transition-colors"}
                 />
               </Card>
             </div>
           )}
 
-          {/* Tab 2: Security & HMAC Inspector */}
+          {/* Tab 2: Security */}
           {activeTab === "security" && (
-            <div className="space-y-6 mt-4">
+            <div className="space-y-4 mt-4">
               <HmacInspector
                 deliveryId="del_99a1b2c3d4"
                 timestamp="2026-08-29T14:31:03Z"
@@ -249,38 +249,13 @@ export default function WebhooksPage() {
                 }}
                 replayWindowValid={true}
               />
-
-              <Card variant="raised" padding="lg" className="space-y-3 font-mono text-xs">
-                <h3 className="font-bold text-ink uppercase tracking-wider">
-                  Python Receiver Verification Blueprint
-                </h3>
-                <pre className="p-3 bg-surface rounded-lg border border-line text-ink-muted overflow-x-auto text-[11px]">
-{`import hmac, hashlib, time
-
-def verify_aegis_webhook(raw_body_bytes: bytes, signature_header: str, secret: str) -> bool:
-    # 1. Parse header: t=...,v1=...
-    parts = dict(x.split('=', 1) for x in signature_header.split(','))
-    ts, received_sig = parts.get('t'), parts.get('v1')
-    
-    # 2. Check 5-minute replay window tolerance
-    if not ts or abs(time.time() - float(ts)) > 300:
-        return False
-        
-    # 3. Compute expected HMAC-SHA256 signature
-    msg = f"{ts}.".encode('utf-8') + raw_body_bytes
-    expected = hmac.new(secret.encode('utf-8'), msg, hashlib.sha256).hexdigest()
-    
-    # 4. Constant-time comparison
-    return hmac.compare_digest(received_sig, expected)`}
-                </pre>
-              </Card>
             </div>
           )}
 
-          {/* Tab 3: Registered Subscriptions */}
+          {/* Tab 3: Subscriptions */}
           {activeTab === "subscriptions" && (
             <div className="space-y-4 mt-4">
-              <Card variant="raised" padding="none">
+              <Card variant="flat" padding="none" className="border">
                 <Table
                   columns={[
                     {
@@ -313,7 +288,7 @@ def verify_aegis_webhook(raw_body_bytes: bytes, signature_header: str, secret: s
                       header: "Webhook Secret",
                       align: "right",
                       render: () => (
-                        <span className="font-mono text-xs text-ink-faint">whsec_••••••••••••••••3A9F</span>
+                        <span className="font-mono text-xs text-ink-muted">whsec_••••••••••••••••3A9F</span>
                       ),
                     },
                   ]}
@@ -334,7 +309,7 @@ def verify_aegis_webhook(raw_body_bytes: bytes, signature_header: str, secret: s
           )}
         </Tabs>
 
-        {/* Selected Delivery Drawer Modal */}
+        {/* Selected Delivery Modal */}
         {selectedDelivery && (
           <Modal
             isOpen={!!selectedDelivery}
@@ -344,12 +319,12 @@ def verify_aegis_webhook(raw_body_bytes: bytes, signature_header: str, secret: s
           >
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                <div className="p-2.5 bg-surface-overlay rounded border border-line">
-                  <span className="text-ink-faint block uppercase text-[10px]">HTTP Status</span>
+                <div className="p-2.5 bg-surface-subtle rounded border border-line">
+                  <span className="text-ink-muted block uppercase text-[10px]">HTTP Status</span>
                   <span className="text-emerald font-bold text-sm">{selectedDelivery.http_status} OK</span>
                 </div>
-                <div className="p-2.5 bg-surface-overlay rounded border border-line">
-                  <span className="text-ink-faint block uppercase text-[10px]">Delivery Latency</span>
+                <div className="p-2.5 bg-surface-subtle rounded border border-line">
+                  <span className="text-ink-muted block uppercase text-[10px]">Latency</span>
                   <span className="text-ink font-bold text-sm">{selectedDelivery.latency_ms} ms</span>
                 </div>
               </div>

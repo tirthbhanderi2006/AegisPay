@@ -1,27 +1,30 @@
 "use client";
 
-import { forwardRef, type SelectHTMLAttributes, type OptionHTMLAttributes } from "react";
+import React, { forwardRef } from "react";
 import { clsx } from "clsx";
+import { ChevronDown } from "lucide-react";
 
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
+
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
+  options: SelectOption[];
   error?: string;
-  hint?: string;
-  placeholder?: string;
-  options: { value: string; label: string; disabled?: boolean }[];
-  fullWidth?: boolean;
+  helperText?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, hint, placeholder, options, fullWidth = true, className, id, ...props }, ref) => {
-    const selectId = id || label?.toLowerCase().replace(/\s+/g, "-");
-    const errorId = `${selectId}-error`;
-    const hintId = `${selectId}-hint`;
+  ({ label, options, error, helperText, className, disabled, id, ...props }, ref) => {
+    const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined);
 
     return (
-      <div className={clsx("w-full", fullWidth && "w-full")}>
+      <div className="w-full space-y-1">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-ink mb-1.5">
+          <label htmlFor={selectId} className="block text-xs font-medium text-ink-secondary">
             {label}
           </label>
         )}
@@ -29,48 +32,24 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           <select
             ref={ref}
             id={selectId}
+            disabled={disabled}
             className={clsx(
-              "w-full rounded-md border bg-surface text-ink appearance-none",
-              "transition-all duration-150",
-              "focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              "pl-4 pr-10 py-2.5 text-sm",
-              error
-                ? "border-red focus:ring-red"
-                : "border-line hover:border-line-strong",
+              "w-full h-8 pl-2.5 pr-8 bg-surface text-ink text-xs font-sans rounded border border-line appearance-none transition-colors focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-subtle disabled:text-ink-faint disabled:cursor-not-allowed cursor-pointer",
+              error && "border-red focus:border-red focus:ring-red",
               className
             )}
-            aria-invalid={error ? "true" : "false"}
-            aria-describedby={clsx(error && errorId, hint && hintId)}
             {...props}
           >
-            {placeholder && (
-              <option value="" disabled>
-                {placeholder}
-              </option>
-            )}
-            {options.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
-                {opt.label}
+            {options.map((option) => (
+              <option key={option.value} value={option.value} disabled={option.disabled}>
+                {option.label}
               </option>
             ))}
           </select>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </div>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-muted pointer-events-none" />
         </div>
-        {error && (
-          <p id={errorId} className="mt-1.5 text-sm text-red" role="alert">
-            {error}
-          </p>
-        )}
-        {hint && !error && (
-          <p id={hintId} className="mt-1.5 text-sm text-ink-muted">
-            {hint}
-          </p>
-        )}
+        {error && <p className="text-[11px] text-red mt-0.5">{error}</p>}
+        {!error && helperText && <p className="text-[11px] text-ink-muted mt-0.5">{helperText}</p>}
       </div>
     );
   }

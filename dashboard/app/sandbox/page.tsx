@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { clsx } from "clsx";
 import {
   FlaskConical,
   Play,
@@ -29,58 +28,44 @@ const SCENARIOS = [
   {
     id: "normal",
     name: "Normal Payment",
-    description: "Standard domestic payment, conforming to baseline",
+    description: "Standard domestic payment conforming to merchant baseline",
     decision: "ALLOW",
-    color: "emerald",
-    icon: <CheckCircle className="w-5 h-5 text-emerald" />,
   },
   {
     id: "velocity",
-    name: "Suspicious Velocity",
-    description: "High-frequency payment attempts in short interval",
+    name: "Suspicious Velocity Burst",
+    description: "12 rapid payment attempts executed in 2-minute interval",
     decision: "BLOCK",
-    color: "red",
-    icon: <Zap className="w-5 h-5 text-red" />,
   },
   {
     id: "entity",
     name: "Cross-Merchant Entity Risk",
-    description: "Device/IP token linked to elevated chargebacks",
+    description: "Device token linked to multiple high-risk checkout identities",
     decision: "BLOCK",
-    color: "red",
-    icon: <GitBranch className="w-5 h-5 text-red" />,
   },
   {
     id: "manual",
     name: "Manual Review Step-up",
-    description: "Medium risk requiring step-up 3DS authentication",
+    description: "Moderate behavioral deviation; 3DS authentication requested",
     decision: "CHALLENGE",
-    color: "amber",
-    icon: <AlertTriangle className="w-5 h-5 text-amber" />,
   },
   {
     id: "graph_fail",
     name: "Graph Unavailable Simulation",
-    description: "Entity graph degraded, behavioral eval continues",
+    description: "Entity graph degraded, behavioral eval continues cleanly",
     decision: "CHALLENGE",
-    color: "amber",
-    icon: <GitBranch className="w-5 h-5 text-amber" />,
   },
   {
     id: "fx_fail",
     name: "FX Unavailable Simulation",
     description: "FX rate stale, controlled fallback applied",
     decision: "CHALLENGE",
-    color: "amber",
-    icon: <Globe className="w-5 h-5 text-amber" />,
   },
   {
     id: "audit_fail",
     name: "Audit Unavailable Simulation",
     description: "Audit store degraded, decision returned truthfully",
     decision: "BLOCK",
-    color: "red",
-    icon: <Shield className="w-5 h-5 text-red" />,
   },
 ];
 
@@ -113,12 +98,12 @@ export default function SandboxPage() {
     setCurrentStep(0);
     setResultData(null);
 
-    // Call the real backend sandbox endpoint
+    // Call real backend sandbox execution
     const backendPromise = executeSandboxTransaction(selectedScenario).catch(() => null);
 
     for (let i = 0; i < PIPELINE_STAGES.length; i++) {
       setCurrentStep(i);
-      await new Promise((r) => setTimeout(r, 180));
+      await new Promise((r) => setTimeout(r, 140));
     }
 
     const realResult = await backendPromise;
@@ -126,22 +111,21 @@ export default function SandboxPage() {
     if (realResult) {
       setResultData(realResult);
     } else {
-      // Robust deterministic simulation fallback
       const sc = SCENARIOS.find((s) => s.id === selectedScenario)!;
       setResultData({
-        transaction_id: `sandbox_${sc.id}_${Date.now()}`,
-        decision_id: `dec_sandbox_${sc.id}`,
+        transaction_id: `sandbox_${sc.id}_${Date.now().toString().slice(-4)}`,
+        decision_id: `dec_sbx_${sc.id}`,
         decision: sc.decision as any,
-        risk_score: sc.decision === "BLOCK" ? 0.914 : sc.decision === "CHALLENGE" ? 0.542 : 0.123,
+        risk_score: sc.decision === "BLOCK" ? 0.914 : sc.decision === "CHALLENGE" ? 0.542 : 0.082,
         risk_level: sc.decision === "BLOCK" ? "HIGH" : sc.decision === "CHALLENGE" ? "MEDIUM" : "LOW",
         evidence_quality: sc.id === "graph_fail" ? 0.69 : sc.id === "fx_fail" ? 0.75 : 0.94,
         signals: [
           {
-            name: "sandbox_synthetic_signal",
+            name: "sandbox_deterministic_signal",
             severity: sc.decision === "BLOCK" ? "high" : "medium",
             value: 1,
             contribution: 0.35,
-            description: `Triggered deterministic rule for ${sc.name}`,
+            description: `Evaluated scenario: ${sc.name}`,
           },
         ],
         explanation: [`Evaluated synthetic scenario: ${sc.name}`],
@@ -152,7 +136,7 @@ export default function SandboxPage() {
           schema_version: "features_v3",
         },
         audit: {
-          snapshot_id: `snap_sandbox_${sc.id}`,
+          snapshot_id: `snap_sbx_${sc.id}`,
           decision_hash: "a4f891b2c3d4e5f67890123456789abcdef",
           recorded: sc.id !== "audit_fail",
         },
@@ -178,28 +162,29 @@ export default function SandboxPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 select-text">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-ink">Interactive Scenario Sandbox</h1>
-              <Badge variant="info" size="sm">DEMO / SIMULATION</Badge>
+            <div className="flex items-center gap-2 font-mono text-xs text-ink-muted">
+              <span>SANDBOX</span>
+              <span>/</span>
+              <span className="font-bold text-ink">SCENARIO LABORATORY</span>
             </div>
-            <p className="text-xs text-ink-muted mt-1">
-              Execute adversarial risk patterns and failure modes against the real backend pipeline (POST /v1/sandbox/transactions)
-            </p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink mt-0.5">
+              Interactive Scenario Testing
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               variant="primary"
               size="md"
-              leftIcon={<Play className={`w-4 h-4 ${running ? "animate-spin" : ""}`} />}
+              leftIcon={<Play className={`w-3.5 h-3.5 ${running ? "animate-spin" : ""}`} />}
               onClick={runScenario}
               disabled={running}
             >
-              {running ? "Evaluating Pipeline..." : "Execute Scenario"}
+              {running ? "Executing Pipeline..." : "Execute Scenario (POST /v1/sandbox/transactions)"}
             </Button>
           </div>
         </div>
@@ -212,64 +197,49 @@ export default function SandboxPage() {
               <div
                 key={s.id}
                 onClick={() => !running && setSelectedScenario(s.id)}
-                className={clsx(
-                  "p-3.5 rounded-xl border transition-all cursor-pointer select-none",
+                className={`p-3.5 rounded border transition-all cursor-pointer select-none ${
                   isSelected
-                    ? "bg-gold/10 border-gold shadow-sm"
-                    : "bg-surface-raised border-line hover:border-line-strong hover:bg-surface-overlay"
-                )}
+                    ? "bg-surface border-ink shadow-card"
+                    : "bg-surface/60 border-line hover:border-line-strong hover:bg-surface"
+                }`}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    {s.icon}
-                    <span className="font-semibold text-xs text-ink">{s.name}</span>
-                  </div>
-                  <DecisionBadge decision={s.decision as any} size="sm" />
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <span className="font-semibold text-xs text-ink">{s.name}</span>
+                  <DecisionBadge decision={s.decision} size="sm" />
                 </div>
-                <p className="text-xs text-ink-muted leading-relaxed">{s.description}</p>
+                <p className="text-[11px] text-ink-secondary leading-relaxed">{s.description}</p>
               </div>
             );
           })}
         </div>
 
-        {/* Live Pipeline Progression Track */}
-        <Card variant="raised" padding="lg" className="space-y-4">
+        {/* 12-Stage Evaluation Pipeline Track */}
+        <Card variant="flat" padding="md" className="space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-line">
             <h3 className="font-mono text-xs font-bold text-ink uppercase tracking-wider">
-              12-Stage Evaluation Pipeline Execution
+              12-Stage Evaluation Pipeline Track
             </h3>
             <span className="text-xs font-mono text-ink-muted">
-              Scenario: <strong className="text-gold">{activeScenario.name}</strong>
+              Active: <strong className="text-ink">{activeScenario.name}</strong>
             </span>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-12 gap-2 pt-1">
             {PIPELINE_STAGES.map((stage, idx) => {
-              const isCompleted = completed || idx < currentStep;
+              const isDone = completed || idx < currentStep;
               const isCurrent = running && idx === currentStep;
               return (
                 <div
                   key={stage}
-                  className={clsx(
-                    "p-2.5 rounded-lg border text-center transition-all duration-150 font-mono text-[10px]",
-                    isCompleted
-                      ? "bg-emerald/10 border-emerald/40 text-emerald font-bold"
+                  className={`p-2 rounded border text-center font-mono text-[9px] transition-colors ${
+                    isDone
+                      ? "bg-emerald-bg border-emerald-border text-emerald font-semibold"
                       : isCurrent
-                      ? "bg-gold/20 border-gold text-gold font-bold ring-2 ring-gold/30 animate-pulse"
-                      : "bg-surface-overlay/40 border-line/60 text-ink-faint"
-                  )}
+                      ? "bg-amber-bg border-amber-border text-amber font-bold"
+                      : "bg-surface-subtle border-line text-ink-faint"
+                  }`}
                 >
-                  <div className="flex justify-center mb-1">
-                    {isCompleted ? (
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald" />
-                    ) : isCurrent ? (
-                      <Loader2 className="w-3.5 h-3.5 text-gold animate-spin" />
-                    ) : (
-                      <span className="w-3.5 h-3.5 rounded-full border border-line flex items-center justify-center text-[8px]">
-                        {idx + 1}
-                      </span>
-                    )}
-                  </div>
+                  <div className="mb-0.5 text-[8px] text-ink-muted">0{idx + 1}</div>
                   <span className="truncate block">{stage}</span>
                 </div>
               );
@@ -277,15 +247,15 @@ export default function SandboxPage() {
           </div>
         </Card>
 
-        {/* Results Panel */}
+        {/* Result Outcome */}
         {resultData && (
-          <div className="space-y-6">
-            <Card variant="raised" padding="lg" className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-line">
+          <div className="space-y-4 animate-in">
+            <Card variant="flat" padding="lg" className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line">
                 <div>
-                  <h3 className="text-lg font-bold text-ink">Sandbox Risk Decision Outcome</h3>
+                  <h3 className="text-base font-bold text-ink">Sandbox Evaluation Result</h3>
                   <p className="text-xs text-ink-muted font-mono">
-                    Transaction ID: <span className="text-gold font-semibold">{resultData.transaction_id}</span>
+                    Transaction ID: <span className="text-ink font-semibold">{resultData.transaction_id}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -301,42 +271,41 @@ export default function SandboxPage() {
               />
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-                <div className="p-3 bg-surface-overlay rounded-lg border border-line">
-                  <span className="text-ink-faint text-[10px] block uppercase mb-1">Risk Score</span>
+                <div className="p-3 bg-surface-subtle rounded border border-line">
+                  <span className="text-ink-muted text-[10px] block uppercase mb-0.5">Risk Score</span>
                   <span className="text-xl font-bold text-ink">
-                    {(resultData.risk_score <= 1.0 ? resultData.risk_score * 100 : resultData.risk_score).toFixed(1)}
+                    {(resultData.risk_score <= 1.0 ? resultData.risk_score * 100 : resultData.risk_score).toFixed(1)} / 100
                   </span>
                 </div>
-                <div className="p-3 bg-surface-overlay rounded-lg border border-line">
-                  <span className="text-ink-faint text-[10px] block uppercase mb-1">Evidence Quality</span>
+                <div className="p-3 bg-surface-subtle rounded border border-line">
+                  <span className="text-ink-muted text-[10px] block uppercase mb-0.5">Evidence Quality</span>
                   <span className="text-xl font-bold text-emerald">{resultData.evidence_quality.toFixed(2)}</span>
                 </div>
-                <div className="p-3 bg-surface-overlay rounded-lg border border-line">
-                  <span className="text-ink-faint text-[10px] block uppercase mb-1">Evaluation Latency</span>
-                  <span className="text-xl font-bold text-gold">{resultData.latency_ms.toFixed(2)} ms</span>
+                <div className="p-3 bg-surface-subtle rounded border border-line">
+                  <span className="text-ink-muted text-[10px] block uppercase mb-0.5">Evaluation Latency</span>
+                  <span className="text-xl font-bold text-ink">{resultData.latency_ms.toFixed(2)} ms</span>
                 </div>
-                <div className="p-3 bg-surface-overlay rounded-lg border border-line">
-                  <span className="text-ink-faint text-[10px] block uppercase mb-1">Audit Status</span>
+                <div className="p-3 bg-surface-subtle rounded border border-line">
+                  <span className="text-ink-muted text-[10px] block uppercase mb-0.5">Audit Snapshot</span>
                   <span className="text-xl font-bold text-ink">
                     {resultData.audit.recorded ? "RECORDED" : "VOLATILE"}
                   </span>
                 </div>
               </div>
 
-              {/* Navigation Action Buttons */}
-              <div className="pt-2 flex flex-wrap gap-3">
+              <div className="pt-2 flex flex-wrap gap-2.5">
                 <Button
                   variant="primary"
                   size="sm"
-                  leftIcon={<ArrowRight className="w-4 h-4" />}
+                  leftIcon={<ArrowRight className="w-3.5 h-3.5" />}
                   onClick={() => router.push(`/investigations/${resultData.transaction_id}`)}
                 >
-                  View Full Investigation Dossier
+                  View Investigation Dossier
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  leftIcon={<RotateCcw className="w-4 h-4" />}
+                  leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
                   onClick={() => router.push(`/replay/${resultData.transaction_id}`)}
                 >
                   Replay Decision
@@ -344,11 +313,10 @@ export default function SandboxPage() {
               </div>
             </Card>
 
-            {/* Developer Raw JSON Inspector */}
             <JsonViewer
               data={resultData}
-              title="Real Public V1 Evaluation Output (POST /v1/sandbox/transactions)"
-              maxHeight="350px"
+              title="Real Backend V1 Sandbox Response (POST /v1/sandbox/transactions)"
+              maxHeight="300px"
             />
           </div>
         )}

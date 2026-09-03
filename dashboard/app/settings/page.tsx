@@ -2,317 +2,196 @@
 
 import React, { useState } from "react";
 import {
-  User,
   Key,
   Shield,
-  Palette,
-  Bell,
-  AlertTriangle,
-  Plus,
-  Copy,
-  Trash2,
-  Lock,
-  Save,
   Building,
-  CheckCircle,
-  Sun,
-  Moon,
+  Lock,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Check,
 } from "lucide-react";
 import { Card, Badge, Button, Input, Select, Tabs, type TabItem } from "@/components/ui";
 import { MainLayout } from "@/components/layout";
 import { ApiKeyModal } from "@/components/security/ApiKeyModal";
 import { useRBAC, PermissionGuard } from "@/lib/rbac";
-import { INITIAL_API_KEYS } from "@/lib/api";
-import type { ApiKeyRecord } from "@/lib/types";
 
 export default function SettingsPage() {
-  const { currentRole, merchantId, setMerchantId } = useRBAC();
-  const [activeTab, setActiveTab] = useState("api-keys");
-  const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>(INITIAL_API_KEYS);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyEnv, setNewKeyEnv] = useState<"sandbox" | "production">("sandbox");
-  const [createdSecret, setCreatedSecret] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const { merchantId, setMerchantId, environment, setEnvironment, currentRole } = useRBAC();
+  const [activeTab, setActiveTab] = useState("keys");
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [newKeyData, setNewKeyData] = useState<{ key: string; name: string; prefix: string } | null>(null);
 
-  const handleCreateKey = () => {
-    if (!newKeyName.trim()) return;
-    const isProd = newKeyEnv === "production";
-    const prefix = isProd ? "ak_live_" : "ak_test_";
-    const randomHex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-    const fullSecret = `${prefix}${randomHex}`;
-
-    const newRecord: ApiKeyRecord = {
-      id: `key_${Date.now()}`,
-      name: newKeyName.trim(),
-      key_prefix: `${prefix}••••${randomHex.slice(-4).toUpperCase()}`,
-      created_at: new Date().toISOString(),
-      last_used_at: null,
-      merchant_id: merchantId,
-      status: "active",
-      environment: newKeyEnv,
-    };
-
-    setApiKeys((prev) => [newRecord, ...prev]);
-    setCreatedSecret(fullSecret);
-    setShowCreateModal(false);
-    setNewKeyName("");
-  };
-
-  const handleRevokeKey = (keyId: string) => {
-    if (confirm("Are you sure you want to revoke this API key? This action is irreversible.")) {
-      setApiKeys((prev) =>
-        prev.map((k) => (k.id === keyId ? { ...k, status: "revoked" } : k))
-      );
-    }
+  const handleGenerateKey = () => {
+    const rawSecret = `ak_live_${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+    setNewKeyData({
+      key: rawSecret,
+      name: "Production Gateway Checkout Key",
+      prefix: rawSecret.slice(0, 12),
+    });
+    setShowKeyModal(true);
   };
 
   const tabs: TabItem[] = [
-    { value: "api-keys", label: "API Keys & Secrets", icon: <Key className="w-4 h-4" /> },
-    { value: "merchant", label: "Merchant Configuration", icon: <Building className="w-4 h-4" /> },
-    { value: "appearance", label: "Appearance & Theme", icon: <Palette className="w-4 h-4" /> },
+    { value: "keys", label: "API Keys & Secrets", icon: <Key className="w-3.5 h-3.5" /> },
+    { value: "merchant", label: "Merchant Boundary", icon: <Building className="w-3.5 h-3.5" /> },
+    { value: "policy", label: "Frozen Calibration Rules", icon: <Shield className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 select-text">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
           <div>
-            <h1 className="text-2xl font-bold text-ink">Platform Configuration & Secrets</h1>
-            <p className="text-xs text-ink-muted mt-1">
-              Cryptographic API key credentials, multi-tenant boundaries, and system preferences
-            </p>
+            <div className="flex items-center gap-2 font-mono text-xs text-ink-muted">
+              <span>CONFIGURATION</span>
+              <span>/</span>
+              <span className="font-bold text-ink">{merchantId}</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink mt-0.5">
+              Platform Configuration & Secrets
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <PermissionGuard permission="security:manage_keys">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+                onClick={handleGenerateKey}
+              >
+                Generate New API Key
+              </Button>
+            </PermissionGuard>
           </div>
         </div>
 
-        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="pills">
-          {/* Tab 1: API Keys */}
-          {activeTab === "api-keys" && (
-            <div className="space-y-6 mt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-sm text-ink uppercase tracking-wider font-mono">
-                    Merchant API Keys ({merchantId})
-                  </h3>
-                  <p className="text-xs text-ink-muted">
-                    Authenticate requests using HTTP header <code className="text-gold font-mono">X-API-Key</code> or <code className="text-gold font-mono">Authorization: Bearer &lt;key&gt;</code>
+        {/* Tabs */}
+        <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="line">
+          {/* Tab 1: Keys */}
+          {activeTab === "keys" && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3.5 bg-surface-subtle rounded border border-line flex items-start gap-2.5 text-xs">
+                <Lock className="w-4 h-4 text-emerald flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-mono font-bold text-ink uppercase text-[11px] block">
+                    Single-Reveal Secret Policy
+                  </span>
+                  <p className="text-ink-secondary leading-relaxed">
+                    API secrets and private signing keys are displayed exactly once at generation time. AegisPay stores only irreversible cryptographic hashes.
                   </p>
                 </div>
-
-                <PermissionGuard permission="security:manage_keys">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => setShowCreateModal(true)}
-                  >
-                    Generate API Key
-                  </Button>
-                </PermissionGuard>
               </div>
 
-              {/* API Key List */}
-              <div className="space-y-3">
-                {apiKeys.map((key) => (
-                  <Card
-                    key={key.id}
-                    variant={key.status === "active" ? "raised" : "outlined"}
-                    padding="md"
-                    className={key.status === "revoked" ? "opacity-60" : ""}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gold/10 text-gold flex items-center justify-center border border-gold/30 flex-shrink-0">
-                          <Key className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-ink">{key.name}</span>
-                            <Badge variant={key.status === "active" ? "success" : "neutral"} size="sm" dot>
-                              {key.status.toUpperCase()}
-                            </Badge>
-                            <Badge variant={key.environment === "production" ? "danger" : "info"} size="sm">
-                              {key.environment.toUpperCase()}
-                            </Badge>
-                          </div>
-                          <p className="font-mono text-xs text-ink-muted mt-0.5 select-all">
-                            {key.key_prefix}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <div className="text-right text-ink-muted">
-                          <span>Created: {new Date(key.created_at).toLocaleDateString()}</span>
-                          <span className="block text-[10px] text-ink-faint">
-                            Last used: {key.last_used_at ? new Date(key.last_used_at).toLocaleTimeString() : "Never"}
-                          </span>
-                        </div>
-
-                        {key.status === "active" && (
-                          <PermissionGuard permission="security:manage_keys">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              leftIcon={<Trash2 className="w-3.5 h-3.5 text-red" />}
-                              onClick={() => handleRevokeKey(key.id)}
-                              className="text-red hover:bg-red/10 h-8"
-                            >
-                              Revoke
-                            </Button>
-                          </PermissionGuard>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Security Policy Reminder */}
-              <Card variant="raised" padding="md" className="space-y-2 border-gold/30 bg-gold/5 text-xs">
-                <div className="flex items-center gap-2 font-bold text-gold uppercase tracking-wider font-mono">
-                  <Shield className="w-4 h-4" />
-                  <span>Cryptographic Secret Protection Contract</span>
-                </div>
-                <ul className="space-y-1 text-ink-muted list-disc list-inside leading-relaxed">
-                  <li>API keys are hashed with <strong>SHA-256</strong> prior to database persistence; plaintext keys are NEVER stored.</li>
-                  <li>Plaintext secrets are displayed exactly once at creation time and can never be retrieved or re-exposed.</li>
-                  <li>Merchant isolation strictly restricts each key to its corresponding merchant boundary (<code>{merchantId}</code>).</li>
-                </ul>
+              <Card variant="flat" padding="none" className="border">
+                <table className="w-full text-xs font-mono text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-line bg-surface-subtle text-ink-muted uppercase text-[10px]">
+                      <th className="py-2.5 px-4 font-sans font-semibold">Key Identifier</th>
+                      <th className="py-2.5 px-3">Prefix / Hash</th>
+                      <th className="py-2.5 px-3">Role / Scope</th>
+                      <th className="py-2.5 px-3">Created</th>
+                      <th className="py-2.5 px-3 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line/60">
+                    {[
+                      { name: "Checkout Gateway API Key", prefix: "ak_live_••••3A9F", role: "FULL_EVALUATE", created: "2026-08-20", active: true },
+                      { name: "Risk Analyst Readonly Key", prefix: "ak_live_••••8812", role: "READ_ONLY", created: "2026-08-15", active: true },
+                      { name: "Legacy V1 Gateway Key", prefix: "ak_live_••••1102", role: "FULL_EVALUATE", created: "2026-06-01", active: false },
+                    ].map((k, idx) => (
+                      <tr key={idx} className="hover:bg-surface-subtle transition-colors">
+                        <td className="py-3 px-4 font-sans font-semibold text-ink">{k.name}</td>
+                        <td className="py-3 px-3 text-ink select-all">{k.prefix}</td>
+                        <td className="py-3 px-3 text-ink-secondary">{k.role}</td>
+                        <td className="py-3 px-3 text-ink-muted">{k.created}</td>
+                        <td className="py-3 px-3 text-right">
+                          <Badge variant={k.active ? "success" : "neutral"} size="sm" dot={k.active}>
+                            {k.active ? "ACTIVE" : "REVOKED"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </Card>
             </div>
           )}
 
-          {/* Tab 2: Merchant Configuration */}
+          {/* Tab 2: Merchant Boundary */}
           {activeTab === "merchant" && (
-            <div className="max-w-2xl space-y-6 mt-4">
-              <Card variant="raised" padding="lg" className="space-y-4">
-                <h3 className="text-sm font-bold text-ink uppercase tracking-wider font-mono">
-                  Active Tenant Information
-                </h3>
-                <div className="space-y-3 text-xs">
-                  <Input label="Authenticated Merchant ID" value={merchantId} disabled />
-                  <Input label="Organization Legal Entity" value="Acme Payments Infrastructure Ltd." />
-                  <Input label="Technical Contact Email" value="security-team@acme-payments.io" />
+            <div className="space-y-4 mt-4">
+              <Card variant="flat" padding="lg" className="space-y-4 max-w-2xl">
+                <h3 className="text-sm font-bold text-ink">Merchant Partitioning</h3>
+                <div className="space-y-3">
                   <Select
-                    label="Default Risk Decisioning Policy"
-                    value="policy_v2.1"
+                    label="Active Merchant ID"
+                    value={merchantId}
                     options={[
-                      { value: "policy_v2.1", label: "policy_v2.1 (Standard Fraud & Velocity Rules)" },
-                      { value: "policy_v1.0", label: "policy_v1.0 (Conservative High-Ticket Policy)" },
+                      { value: "m_sandbox", label: "m_sandbox (Isolated Development Sandbox)" },
+                      { value: "m_acme", label: "m_acme (Production Acme Gateway)" },
+                      { value: "m_alpha", label: "m_alpha (Multi-Tenant Alpha)" },
                     ]}
+                    onChange={(e) => setMerchantId(e.target.value)}
+                  />
+
+                  <Select
+                    label="Execution Environment"
+                    value={environment}
+                    options={[
+                      { value: "SANDBOX", label: "SANDBOX (Simulation mode)" },
+                      { value: "PRODUCTION", label: "PRODUCTION (Live evaluation mode)" },
+                    ]}
+                    onChange={(e) => setEnvironment(e.target.value as any)}
                   />
                 </div>
-                <Button variant="primary" size="sm" leftIcon={<Save className="w-4 h-4" />}>
-                  Save Tenant Configuration
-                </Button>
               </Card>
             </div>
           )}
 
-          {/* Tab 3: Appearance */}
-          {activeTab === "appearance" && (
-            <div className="max-w-2xl space-y-6 mt-4">
-              <Card variant="raised" padding="lg" className="space-y-4">
-                <h3 className="text-sm font-bold text-ink uppercase tracking-wider font-mono">
-                  Console Theme & Visual Mode
+          {/* Tab 3: Policy */}
+          {activeTab === "policy" && (
+            <div className="space-y-4 mt-4">
+              <Card variant="flat" padding="md" className="space-y-3 max-w-2xl text-xs font-mono">
+                <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
+                  Frozen Risk Calibration Parameters
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => {
-                      setTheme("dark");
-                      document.documentElement.classList.add("dark");
-                    }}
-                    className={`p-4 rounded-xl border-2 text-left flex items-center gap-3 transition-colors ${
-                      theme === "dark" ? "border-gold bg-gold/10" : "border-line bg-surface-overlay"
-                    }`}
-                  >
-                    <Moon className="w-5 h-5 text-gold" />
-                    <div>
-                      <p className="font-semibold text-sm text-ink">Dark Mode (Default)</p>
-                      <p className="text-xs text-ink-muted">Optimized for high-density fintech operations</p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTheme("light");
-                      document.documentElement.classList.remove("dark");
-                    }}
-                    className={`p-4 rounded-xl border-2 text-left flex items-center gap-3 transition-colors ${
-                      theme === "light" ? "border-gold bg-gold/10" : "border-line bg-surface-overlay"
-                    }`}
-                  >
-                    <Sun className="w-5 h-5 text-gold" />
-                    <div>
-                      <p className="font-semibold text-sm text-ink">Light Mode</p>
-                      <p className="text-xs text-ink-muted">High-contrast daytime operational view</p>
-                    </div>
-                  </button>
+                <div className="p-3 bg-surface-subtle rounded border border-line space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">Calibration Matrix Version:</span>
+                    <span className="font-bold text-ink">cal_v1.4 (FROZEN)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">ALLOW Threshold Cutoff:</span>
+                    <span className="font-bold text-emerald">Score &lt; 0.4000</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">CHALLENGE (3DS) Window:</span>
+                    <span className="font-bold text-amber">0.4000 &le; Score &lt; 0.7000</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">BLOCK Threshold Cutoff:</span>
+                    <span className="font-bold text-red">Score &ge; 0.7000</span>
+                  </div>
                 </div>
               </Card>
             </div>
           )}
         </Tabs>
 
-        {/* Create API Key Modal */}
-        {showCreateModal && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="w-full max-w-md bg-surface-raised border border-line rounded-xl p-6 shadow-2xl space-y-4">
-              <h3 className="text-lg font-bold text-ink">Generate New API Key</h3>
-              <p className="text-xs text-ink-muted">
-                Create an authenticated API key for merchant <code className="text-gold">{merchantId}</code>.
-              </p>
-
-              <div className="space-y-3">
-                <Input
-                  label="Key Name / Identifier"
-                  placeholder="e.g. Production Payment Gateway"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                />
-
-                <Select
-                  label="Target Environment"
-                  value={newKeyEnv}
-                  options={[
-                    { value: "sandbox", label: "SANDBOX (Simulation & Testing)" },
-                    { value: "production", label: "PRODUCTION (Live Payment Decisions)" },
-                  ]}
-                  onChange={(e) => setNewKeyEnv(e.target.value as any)}
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3">
-                <Button variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleCreateKey}
-                  disabled={!newKeyName.trim()}
-                >
-                  Generate Secret Key
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Secure Single-Reveal API Key Modal */}
-        {createdSecret && (
+        {/* Single-reveal Secret Modal */}
+        {newKeyData && (
           <ApiKeyModal
-            isOpen={!!createdSecret}
-            onClose={() => setCreatedSecret(null)}
-            apiKeyName={newKeyName || "Generated API Key"}
-            secretPlaintext={createdSecret}
-            environment={newKeyEnv}
+            isOpen={showKeyModal}
+            onClose={() => {
+              setShowKeyModal(false);
+              setNewKeyData(null);
+            }}
+            apiKeyName={newKeyData.name}
+            secretPlaintext={newKeyData.key}
+            environment={environment.toLowerCase()}
           />
         )}
       </div>
